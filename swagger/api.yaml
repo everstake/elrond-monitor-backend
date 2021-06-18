@@ -1,0 +1,545 @@
+openapi: 3.0.1
+info:
+  title: Erlond-Monitor API
+  version: 1.0.0
+paths:
+  /network:
+    get:
+      tags:
+        - Network
+      summary: Get network stats
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_stake:
+                    type: number
+                  total_delegators:
+                    type: number
+                  total_accounts:
+                    type: number
+                  top_up_stake:
+                    type: number
+                  active_validators:
+                    type: number
+                  staking_apr:
+                    type: number
+                  block_time:
+                    type: number
+  /market:
+    get:
+      tags:
+        - Market
+      summary: Get market stats
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  market_cap:
+                    type: number
+                  circulating_supply:
+                    type: number
+                  max_price:
+                    type: number
+                  price:
+                    type: number
+  /epoch:
+    get:
+      tags:
+        - Epoch
+      summary: Get epoch stats
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  number:
+                    type: number
+                  ends_after:
+                    type: number
+                  total_stake:
+                    type: number
+                  total_delegators:
+                    type: number
+                  price_shift:
+                    type: number
+  /accounts:
+    get:
+      parameters:
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
+          example: {page: 1, limit: 50}
+      tags:
+        - "Accounts"
+      summary: get accounts
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: number
+                  accounts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        address:
+                          type: string
+                        balance:
+                          type: number
+                        delegated:
+                          type: number
+                        undelegated:
+                          type: number
+                example: {
+                  count: 150000, accounts: [{
+                    address: "erd1v0kjtd6cl9zmjsjel3camkkduxdjvdlpxcg0hqz6t2ccq8vgfe9s9ffvj0",
+                    balance: 200.5,
+                    delegated: 20.5,
+                    undelegated: 10.5,
+                  }]}
+        404:
+          description: "Not found"
+  /account/{address}:
+    get:
+      parameters:
+        - in: path
+          name: address
+          required: true
+          schema:
+            type: string
+          example:
+            address: "erd1v0kjtd6cl9zmjsjel3camkkduxdjvdlpxcg0hqz6t2ccq8vgfe9s9ffvj0"
+      tags:
+        - "Accounts"
+      summary: get account by address
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  address:
+                    type: string
+                  balance:
+                    type: number
+                  delegated:
+                    type: number
+                  undelegated:
+                    type: number
+                  rewards_claimed:
+                    type: number
+                  staking_provider:
+                    type: number
+                example: {
+                  address: "erd1v0kjtd6cl9zmjsjel3camkkduxdjvdlpxcg0hqz6t2ccq8vgfe9s9ffvj0",
+                  balance: 200.5,
+                  delegated: 20.5,
+                  undelegated: 10.5,
+                  rewards_claimed: 4.4,
+                  staking_provider: "Everstake"
+                }
+        404:
+          description: "Not found"
+  /transactions:
+    get:
+      parameters:
+        - in: query
+          name: address
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
+          example: {address: "erd1v0kjtd6cl9zmjsjel3camkkduxdjvdlpxcg0hqz6t2ccq8vgfe9s9ffvj0", page: 1, limit: 50}
+      tags:
+        - "Transactions"
+      summary: get transactions, optionally by address
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: number
+                  txs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/tx'
+        404:
+          description: "Not found"
+  /transaction/{hash}:
+    get:
+      parameters:
+        - in: path
+          name: hash
+          required: true
+          schema:
+            type: string
+      tags:
+        - "Transactions"
+      summary: get transaction by hash
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hash:
+                    type: string
+                  status:
+                    type: string
+                  from:
+                    type: string
+                  to:
+                    type: string
+                  value:
+                    type: number
+                  fee:
+                    type: number
+                  gas_used:
+                    type: number
+                  miniblock_hash:
+                    type: string
+                  timestamp:
+                    type: number
+                  type:
+                    type: string
+                  scResults:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        from:
+                          type: string
+                        to:
+                          type: string
+                        value:
+                          type: number
+                        data:
+                          type: string
+                        message:
+                          type: string
+                example:
+                  { hash: "66b8a1431feed937202f6210f11c58e8b8028d433bf9724a1d68e728cc793a1c",
+                    status: "pending",
+                    from: "erd16x7le8dpkjsafgwjx0e5kw94evsqw039rwp42m2j9eesd88x8zzs75tzry",
+                    to: "erd1v0kjtd6cl9zmjsjel3camkkduxdjvdlpxcg0hqz6t2ccq8vgfe9s9ffvj0",
+                    value: 0.000035,
+                    fee: 0.000035,
+                    gas_used: 0.000035,
+                    miniblock_hash: "e51e2a60d7bb16ee587fe87a871f3de4840fe8bf152d3dc0d04deb94aff97692",
+                    timestamp: 1623945181,
+                    scResults: {
+                      from: "erd1qqqqqqqqqqqqqqqpqqqqqqqqqqqqqqqqqqqqqqqqqqqqq28llllsu54ydr",
+                      to: "erd1kwl4vr0w46dvpq85ajcz9rqxjnyf93wqnmwhqztcu0pjnsmfvx9qxdavhh",
+                      value: 2.0,
+                      data: "@user error",
+                      message: "total delegation cap reached"
+                    }}
+        404:
+          description: "Not found"
+  /blocks:
+    get:
+      parameters:
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
+      tags:
+        - "Blocks"
+      summary: get blocks
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: string
+                  blocks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        hash:
+                          type: string
+                        nonce:
+                          type: number
+                        shard:
+                          type: string
+                        epoch:
+                          type: number
+                        tx_count:
+                          type: string
+                        size:
+                          type: number
+                        proposer:
+                          type: string
+                        timestamp:
+                          type: number
+                      example:
+                        { count: 150000, [{ hash: "54a335f6a103a2e6dfca30f03c436451507a6f7efe6c3358199f55f449587110",
+                                            nonce: 4646587,
+                                            shard: "Shard 2",
+                                            epoch: 322,
+                                            tx_count: 4,
+                                            size: 1.345,
+                                            proposer: "Everstake",
+                                            timestamp: 1623945181 }]}
+        404:
+          description: "Not found"
+  /block/{hash}:
+    get:
+      parameters:
+        - in: path
+          name: hash
+          required: true
+          schema:
+            type: string
+      tags:
+        - "Blocks"
+      summary: get block by hash
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hash:
+                    type: string
+                  nonce:
+                    type: number
+                  shard:
+                    type: string
+                  epoch:
+                    type: number
+                  tx_count:
+                    type: string
+                  size:
+                    type: number
+                  proposer:
+                    type: string
+                  miniblocks:
+                    type: array
+                    items:
+                      type: string
+                  timestamp:
+                    type: number
+                example:
+                  { hash: "54a335f6a103a2e6dfca30f03c436451507a6f7efe6c3358199f55f449587110",
+                    nonce: 4646587,
+                    shard: "Metachain",
+                    epoch: 322,
+                    tx_count: 4,
+                    size: 1.345,
+                    proposer: "Everstake",
+                    miniblocks: ["07f535e699544bc171d70567fcc6b84dd41e14aa56fd6e31b3f6e92226b4b56f", "dbcf0355784973891ba7b71ce53453846a12eb86f159a1100981a4b0efba2705"],
+                    timestamp: 1623945181 }
+        404:
+          description: "Not found"
+  /block:
+    get:
+      parameters:
+        - in: query
+          name: shard
+          required: true
+          schema:
+            type: number
+        - in: query
+          name: nonce
+          required: true
+          schema:
+            type: number
+          example: {shard: 4294967295, nonce: 4646587}
+      tags:
+        - "Blocks"
+      summary: get block by shard and nonce
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hash:
+                    type: string
+                  nonce:
+                    type: number
+                  shard:
+                    type: string
+                  epoch:
+                    type: number
+                  tx_count:
+                    type: string
+                  size:
+                    type: number
+                  proposer:
+                    type: string
+                  miniblocks:
+                    type: array
+                    items:
+                      type: string
+                  timestamp:
+                    type: number
+                example:
+                  { hash: "54a335f6a103a2e6dfca30f03c436451507a6f7efe6c3358199f55f449587110",
+                    nonce: 4646587,
+                    shard: "Metachain",
+                    epoch: 322,
+                    tx_count: 4,
+                    size: 1.345,
+                    proposer: "Everstake",
+                    miniblocks: ["07f535e699544bc171d70567fcc6b84dd41e14aa56fd6e31b3f6e92226b4b56f", "dbcf0355784973891ba7b71ce53453846a12eb86f159a1100981a4b0efba2705"],
+                    timestamp: 1623945181 }
+        404:
+          description: "Not found"
+  /miniblock/{hash}:
+    get:
+      parameters:
+        - in: path
+          name: hash
+          required: true
+          schema:
+            type: string
+      tags:
+        - "Miniblocks"
+      summary: get miniblock by hash
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hash:
+                    type: string
+                  shard_from:
+                    type: string
+                  shard_to:
+                    type: string
+                  block_sender:
+                    type: string
+                  block_receiver:
+                    type: string
+                  type:
+                    type: string
+                  txs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/tx'
+                  timestamp:
+                    type: number
+                example:
+                  { hash: "c4f9494ab2be10cc406d2e2592c16a2748306c91acbce9f85085bd4a85eccd00",
+                    shard_from: "Shard 2",
+                    shard_to: "Shard 2",
+                    block_sender: "0b2e24f5471f4596f471c99ab32464b4ce28ac3b471005f6040de7f23e1f03870b2e24f5471f4596f471c99ab32464b4ce28ac3b",
+                    block_receiver: "0b2e24f5471f4596f471c99ab32464b4ce28ac3b471005f6040de7f23e1f03870b2e24f5471f4596f471c99ab32464b4ce28ac3b",
+                    type: "TxBlock",
+                    txs: [{ hash: "946def034e4bbb47d9669ceeaf180314171440f9e8ab6d46d843ddc091382fd8",
+                            status: "pending",
+                            shard_from: "Shard 2",
+                            shard_to: "Shard 2",
+                            from: "erd1xvmata3rkwmp4h4jxr5ngzzq2zm0p2ev6672xvj3mpmvj2zwlttq87uh9q",
+                            to: "erd1c8v53mcdesz2svpmvglcc0rzgp0j4ckly3ge6fph43eqr49x3ntqx8jngl",
+                            value: 0,
+                            fee: 0.000035,
+                            timestamp: 1623945181 }],
+                    timestamp: 1623945181 }
+        404:
+          description: "Not found"
+
+components:
+  schemas:
+    tx:
+      type: object
+      properties:
+        hash:
+          type: string
+        status:
+          type: string
+        shard_from:
+          type: string
+        shard_to:
+          type: string
+        from:
+          type: string
+        to:
+          type: string
+        value:
+          type: number
+        fee:
+          type: number
+        type:
+          type: string
+        timestamp:
+          type: number
+      example:
+        { hash: "66b8a1431feed937202f6210f11c58e8b8028d433bf9724a1d68e728cc793a1c",
+          status: "pending",
+          shard_from: "Metachain",
+          shard_to: "Shard 1",
+          from: "erd16x7le8dpkjsafgwjx0e5kw94evsqw039rwp42m2j9eesd88x8zzs75tzry",
+          to: "erd1v0kjtd6cl9zmjsjel3camkkduxdjvdlpxcg0hqz6t2ccq8vgfe9s9ffvj0",
+          value: 0.000035,
+          fee: 0.000035,
+          type: "delegate",
+          timestamp: 1623945181 }
+    success:
+      type: object
+      properties:
+        message:
+          type: string
+      example:
+        message: success
