@@ -1,10 +1,8 @@
 package main
 
 import (
-	"elrond-monitor-backend/config"
 	"log"
 	"os"
-	"os/signal"
 )
 
 const (
@@ -17,14 +15,14 @@ func main() {
 		log.Fatal("os.Setenv (TZ): %s", err.Error())
 	}
 
-	cfg, err := config.GetConfigFromFile(configFilePath)
-	if err != nil {
-		log.Fatal("config.GetConfigFromFile: %s", err.Error())
-	}
-	d, err := dao.NewDAO(cfg)
-	if err != nil {
-		log.Fatal("dao.NewDAO: %s", err.Error())
-	}
+	//cfg, err := config.GetConfigFromFile(configFilePath)
+	//if err != nil {
+	//	log.Fatal("config.GetConfigFromFile: %s", err.Error())
+	//}
+	//d, err := dao.NewDAO(cfg)
+	//if err != nil {
+	//	log.Fatal("dao.NewDAO: %s", err.Error())
+	//}
 
 	//s, err := services.NewServices(d, cfg)
 	//if err != nil {
