@@ -1,0 +1,15 @@
+{
+  "API": {
+    "ListenOnPort": 9000,
+    "CORSAllowedOrigins": [
+      "*"
+    ]
+  },
+  "Postgres": {
+    "Host": "localhost",
+    "User": "postgres",
+    "Password": "secret",
+    "Database": "elrond-monitor",
+    "SSLMode": "disable"
+  }
+}
