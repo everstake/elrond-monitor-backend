@@ -12,10 +12,11 @@ type (
 		// parsers
 		GetParsers() (parsers []dmodels.Parser, err error)
 		GetParser(title string) (parser dmodels.Parser, err error)
-		UpdateParser(parser dmodels.Parser) error
+		UpdateParserHeight(parser dmodels.Parser) error
 
 		// accounts
 		CreateAccounts(accounts []dmodels.Account) error
+		// todo: GetAccounts add pagination
 		GetAccounts() (accounts []dmodels.Account, err error)
 		GetAccountsTotal() (total uint64, err error)
 		GetAccount(address string) (account dmodels.Account, err error)
