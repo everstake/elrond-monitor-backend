@@ -46,11 +46,11 @@ func makeConn(cfg config.Postgres) (*sql.DB, error) {
 }
 
 func (db Postgres) find(dest interface{}, sb squirrel.SelectBuilder) error {
-	sql, args, err := sb.PlaceholderFormat(squirrel.Dollar).ToSql()
+	sqlStatement, args, err := sb.PlaceholderFormat(squirrel.Dollar).ToSql()
 	if err != nil {
 		return err
 	}
-	err = db.db.Select(dest, sql, args...)
+	err = db.db.Select(dest, sqlStatement, args...)
 	if err != nil {
 		return err
 	}
@@ -58,11 +58,11 @@ func (db Postgres) find(dest interface{}, sb squirrel.SelectBuilder) error {
 }
 
 func (db Postgres) first(dest interface{}, sb squirrel.SelectBuilder) error {
-	sql, args, err := sb.PlaceholderFormat(squirrel.Dollar).ToSql()
+	sqlStatement, args, err := sb.PlaceholderFormat(squirrel.Dollar).ToSql()
 	if err != nil {
 		return err
 	}
-	err = db.db.Get(dest, sql, args...)
+	err = db.db.Get(dest, sqlStatement, args...)
 	if err != nil {
 		errMsg := err.Error()
 		if errMsg == "sql: no rows in result set" {
@@ -74,13 +74,13 @@ func (db Postgres) first(dest interface{}, sb squirrel.SelectBuilder) error {
 }
 
 func (db Postgres) insert(sb squirrel.InsertBuilder, primaryKey ...string) (lastID uint64, err error) {
-	sql, args, err := sb.PlaceholderFormat(squirrel.Dollar).ToSql()
+	sqlStatement, args, err := sb.PlaceholderFormat(squirrel.Dollar).ToSql()
 	if err != nil {
 		return 0, err
 	}
 	if len(primaryKey) > 0 {
-		sql = fmt.Sprintf("%s RETURNING %s ", sql, primaryKey[0])
-		err = db.db.QueryRow(sql, args...).Scan(&lastID)
+		sqlStatement = fmt.Sprintf("%s RETURNING %s ", sqlStatement, primaryKey[0])
+		err = db.db.QueryRow(sqlStatement, args...).Scan(&lastID)
 		if err != nil {
 			errMsg := err.Error()
 			if len(errMsg) > 50 {
@@ -91,7 +91,7 @@ func (db Postgres) insert(sb squirrel.InsertBuilder, primaryKey ...string) (last
 			return 0, err
 		}
 	} else {
-		_, err := db.db.Exec(sql, args...)
+		_, err = db.db.Exec(sqlStatement, args...)
 		if err != nil {
 			errMsg := err.Error()
 			if len(errMsg) > 50 {
@@ -106,11 +106,11 @@ func (db Postgres) insert(sb squirrel.InsertBuilder, primaryKey ...string) (last
 }
 
 func (db Postgres) update(sb squirrel.UpdateBuilder) (err error) {
-	sql, args, err := sb.PlaceholderFormat(squirrel.Dollar).ToSql()
+	sqlStatement, args, err := sb.PlaceholderFormat(squirrel.Dollar).ToSql()
 	if err != nil {
 		return err
 	}
-	_, err = db.db.Exec(sql, args...)
+	_, err = db.db.Exec(sqlStatement, args...)
 	if err != nil {
 		return err
 	}
@@ -118,11 +118,11 @@ func (db Postgres) update(sb squirrel.UpdateBuilder) (err error) {
 }
 
 func (db Postgres) delete(sb squirrel.DeleteBuilder) (err error) {
-	sql, args, err := sb.PlaceholderFormat(squirrel.Dollar).ToSql()
+	sqlStatement, args, err := sb.PlaceholderFormat(squirrel.Dollar).ToSql()
 	if err != nil {
 		return err
 	}
-	_, err = db.db.Exec(sql, args...)
+	_, err = db.db.Exec(sqlStatement, args...)
 	if err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func (db Postgres) makeMigration(conn *sql.DB, migrationDir string) error {
 	if err != nil {
 		return fmt.Errorf("migrate.NewWithDatabaseInstance: %s", err.Error())
 	}
-	if err := mg.Up(); err != nil {
+	if err = mg.Up(); err != nil {
 		if err != migrate.ErrNoChange {
 			return err
 		}

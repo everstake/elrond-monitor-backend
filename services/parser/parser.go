@@ -269,8 +269,8 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 					txType := string(decodedBytes)
 					switch txType {
 					case "stake":
-					case "reDelegateRewards":
-					case "reStakeRewards": //	create stake, claimRewards
+					case "reDelegateRewards": // create delegation + claimRewards
+					case "reStakeRewards": // create stake + claimRewards (check existence of reStakeRewards tx)
 					case "delegate":
 					case "claimRewards":
 					case "unBond":
@@ -278,7 +278,16 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 						if strings.Contains(txType, "unBond") {
 							//fmt.Println(txType, tx.Txhash)
 						}
-						if strings.Contains(txType, "reStakeRewards") {
+						if strings.Contains(txType, "relayedTx") {
+							//fmt.Println(txType, tx.Txhash)
+						}
+						if strings.Contains(txType, "unDelegate") {
+							//fmt.Println(txType, tx.Txhash)
+						}
+						if strings.Contains(txType, "unStake") {
+							//fmt.Println(txType, tx.Txhash)
+						}
+						if strings.Contains(txType, "reStakeRewards") { // check existence of reStakeRewards tx
 							//fmt.Println(txType, tx.Txhash)
 						}
 					}
@@ -389,11 +398,11 @@ func (p *Parser) saving() {
 		p.saveNewAccounts(singleData)
 		for {
 			model.Height += uint64(count)
-			err = p.dao.UpdateParser(model)
+			err = p.dao.UpdateParserHeight(model)
 			if err == nil {
 				break
 			}
-			log.Error("Parser: dao.UpdateParser: %s", err.Error())
+			log.Error("Parser: dao.UpdateParserHeight: %s", err.Error())
 			<-time.After(repeatDelay)
 		}
 		dataset = append(dataset[count:])
