@@ -21,7 +21,7 @@ func (db Postgres) GetParser(title string) (parser dmodels.Parser, err error) {
 	return parser, err
 }
 
-func (db Postgres) UpdateParser(parser dmodels.Parser) error {
+func (db Postgres) UpdateParserHeight(parser dmodels.Parser) error {
 	q := squirrel.Update(dmodels.ParsersTable).
 		Where(squirrel.Eq{"par_id": parser.ID}).
 		SetMap(map[string]interface{}{
