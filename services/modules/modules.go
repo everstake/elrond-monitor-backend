@@ -1,8 +1,8 @@
 package modules
 
 import (
-	"elrond-monitor-backend/log"
 	"fmt"
+	"github.com/everstake/elrond-monitor-backend/log"
 	"os"
 	"sync"
 	"time"

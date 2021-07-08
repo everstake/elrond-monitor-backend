@@ -1,8 +1,15 @@
 package main
 
 import (
+	"github.com/everstake/elrond-monitor-backend/api"
+	"github.com/everstake/elrond-monitor-backend/config"
+	"github.com/everstake/elrond-monitor-backend/dao"
+	"github.com/everstake/elrond-monitor-backend/services"
+	"github.com/everstake/elrond-monitor-backend/services/modules"
+	"github.com/everstake/elrond-monitor-backend/services/parser"
 	"log"
 	"os"
+	"os/signal"
 )
 
 const (
@@ -12,38 +19,36 @@ const (
 func main() {
 	err := os.Setenv("TZ", "UTC")
 	if err != nil {
-		log.Fatal("os.Setenv (TZ): %s", err.Error())
+		log.Fatalf("os.Setenv (TZ): %s", err.Error())
 	}
 
-	//cfg, err := config.GetConfigFromFile(configFilePath)
-	//if err != nil {
-	//	log.Fatal("config.GetConfigFromFile: %s", err.Error())
-	//}
-	//d, err := dao.NewDAO(cfg)
-	//if err != nil {
-	//	log.Fatal("dao.NewDAO: %s", err.Error())
-	//}
+	cfg, err := config.GetConfigFromFile(configFilePath)
+	if err != nil {
+		log.Fatalf("config.GetConfigFromFile: %s", err.Error())
+	}
 
-	//s, err := services.NewServices(d, cfg)
-	//if err != nil {
-	//	log.Fatal("services.NewServices: %s", err.Error())
-	//}
-	//
-	//prs := parser.NewParser(cfg, d)
-	//
-	//apiServer := api.NewAPI(cfg, s, d)
+	d, err := dao.NewDAO(cfg)
+	if err != nil {
+		log.Fatalf("dao.NewDAO: %s", err.Error())
+	}
 
-	//sch := scheduler.NewScheduler()
+	s, err := services.NewServices(d, cfg)
+	if err != nil {
+		log.Fatalf("services.NewServices: %s", err.Error())
+	}
 
-	//g := modules.NewGroup(apiServer, prs)
-	//g := modules.NewGroup(apiServer, sch, prs)
-	//g.Run()
+	prs := parser.NewParser(cfg, d)
 
-	//gracefulStop := make(chan os.Signal)
-	//signal.Notify(gracefulStop, os.Interrupt, os.Kill)
-	//
-	//<-gracefulStop
-	//g.Stop()
-	//
-	//os.Exit(0)
+	apiServer := api.NewAPI(cfg, s, d)
+
+	g := modules.NewGroup(apiServer, prs)
+	g.Run()
+
+	gracefulStop := make(chan os.Signal)
+	signal.Notify(gracefulStop, os.Interrupt, os.Kill)
+
+	<-gracefulStop
+	g.Stop()
+
+	os.Exit(0)
 }

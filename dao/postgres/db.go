@@ -2,13 +2,14 @@ package postgres
 
 import (
 	"database/sql"
-	"elrond-monitor-backend/config"
 	"fmt"
+	"github.com/Masterminds/squirrel"
+	"github.com/everstake/elrond-monitor-backend/config"
+	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/wedancedalot/squirrel"
 )
 
 const (

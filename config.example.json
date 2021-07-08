@@ -11,5 +11,14 @@
     "Password": "secret",
     "Database": "elrond-monitor",
     "SSLMode": "disable"
+  },
+  "MarketProvider": {
+    "Title": "cmc",
+    "APIKey": "https://api.elrond.com"
+  },
+  "Parser": {
+    "Node": "",
+    "Batch": 100,
+    "Fetchers": 1
   }
 }

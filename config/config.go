@@ -3,15 +3,18 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
+	"io/ioutil"
 	"path/filepath"
 )
 
+const ServiceName = "elrond-monitor-backend"
+
 type (
 	Config struct {
-		API      API
-		Postgres Postgres
+		API            API
+		Postgres       Postgres
+		MarketProvider MarketProvider
+		Parser         Parser
 	}
 	API struct {
 		ListenOnPort       uint16
@@ -24,40 +27,38 @@ type (
 		Database string
 		SSLMode  string
 	}
+	MarketProvider struct {
+		Title  string
+		APIKey string
+	}
+	Parser struct {
+		Node     string
+		Batch    uint64
+		Fetchers uint64
+	}
 )
 
-// load loads config data from any reader or from ENV
-func load(cfg interface{}, source io.Reader) error {
-	decoder := json.NewDecoder(source)
-	err := decoder.Decode(&cfg)
+func GetConfigFromFile(fileName string) (cfg Config, err error) {
+	path, _ := filepath.Abs(fileName)
+	file, err := ioutil.ReadFile(path)
 	if err != nil {
-		return err
+		return cfg, fmt.Errorf("ioutil.ReadFile: %s", err.Error())
 	}
-
-	return nil
-}
-
-func GetConfigFromFile(fileName string) (config Config, err error) {
-	path, err := filepath.Abs(fileName)
+	var config Config
+	err = json.Unmarshal(file, &config)
 	if err != nil {
-		return config, err
+		return cfg, fmt.Errorf("json.Unmarshal: %s", err.Error())
 	}
-	file, err := os.Open(path)
-	if err != nil {
-		return config, err
-	}
-	defer file.Close()
-	err = load(config, file)
-	if err != nil {
-		return config, err
-	}
-
 	return config, config.Validate()
 }
 
 // Validate validates all Config fields.
 func (config *Config) Validate() error {
 	err := config.API.validate()
+	if err != nil {
+		return err
+	}
+	err = config.Parser.validate()
 	if err != nil {
 		return err
 	}
@@ -90,5 +91,18 @@ func (config *Postgres) validate() error {
 		return fmt.Errorf("SSLMode is empty")
 	}
 
+	return nil
+}
+
+func (config *Parser) validate() error {
+	if config.Batch == 0 {
+		return fmt.Errorf("batch is zero")
+	}
+	if config.Fetchers == 0 {
+		return fmt.Errorf("fetchers is zero")
+	}
+	if config.Node == "" {
+		return fmt.Errorf("fetchers is empty")
+	}
 	return nil
 }
