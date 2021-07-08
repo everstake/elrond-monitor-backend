@@ -33,7 +33,7 @@ create table blocks
     blk_accumulated_fees numeric(36, 18) not null
 );
 
-create type miniblock_type as ENUM ('TxBlock', 'SmartContractResultBlock', 'InvalidBlock');
+create type miniblock_type as ENUM ('TxBlock', 'SmartContractResultBlock', 'InvalidBlock', 'RewardsBlock');
 
 create table miniblocks
 (

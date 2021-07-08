@@ -12,13 +12,14 @@ import (
 const (
 	successfulCode = "successful"
 
-	txInfoByMiniBlockHashEndpoint = "%s/transactions"
-	txInfoByHashEndpoint          = "%s/transactions/%s"
-	miniblockByHashEndpoint       = "%s/miniblocks/%s"
-	blockByNonceAndShardEndpoint  = "%s/block/%d/by-nonce/%d"
-	blockByHashAndShardEndpoint   = "%s/block/%d/by-hash/%s"
-	hyperBlockByNonceEndpoint     = "%s/hyperblock/by-nonce/%d"
-	networkInfoByShardEndpoint    = "%s/network/status/%d"
+	txInfoByMiniBlockHashEndpoint = "/transactions"
+	txInfoByHashEndpoint          = "/transactions/%s"
+	miniblockByHashEndpoint       = "/miniblocks/%s"
+	blockByNonceAndShardEndpoint  = "/block/%d/by-nonce/%d"
+	blockByHashAndShardEndpoint   = "/block/%d/by-hash/%s"
+	hyperBlockByNonceEndpoint     = "/hyperblock/by-nonce/%d"
+	networkInfoByShardEndpoint    = "/network/status/%d"
+	addressEndpoint               = "/address/%s"
 )
 
 type (
@@ -32,6 +33,16 @@ type (
 		Code  string          `json:"code"`
 		Error string          `json:"error"`
 	}
+
+	APIi interface {
+		GetTxByHash(hash string) (tx TxDetails, err error)
+		GetTxsByMiniBlockHash(miniBlockHash string, offset, limit uint64) (txs []Tx, err error)
+		GetMiniBlock(hash string) (miniBlock MiniBlock, err error)
+		GetBlock(height uint64, shard uint64) (block Block, err error)
+		GetBlockByHash(hash string, shard uint64) (block Block, err error)
+		GetHyperBlock(height uint64) (hyperBlock HyperBlock, err error)
+		GetMaxHeight(shardIndex uint64) (height uint64, err error)
+	}
 )
 
 func NewAPI(apiAddress string) *API {
@@ -44,42 +55,41 @@ func NewAPI(apiAddress string) *API {
 }
 
 func (api *API) GetTxByHash(hash string) (tx TxDetails, err error) {
-	endpoint := fmt.Sprintf(txInfoByHashEndpoint, api.address, hash)
+	endpoint := fmt.Sprintf(txInfoByHashEndpoint, hash)
 	err = api.get(endpoint, nil, &tx, false)
 	return tx, err
 }
 
 func (api *API) GetTxsByMiniBlockHash(miniBlockHash string, offset, limit uint64) (txs []Tx, err error) {
-	endpoint := fmt.Sprintf(txInfoByMiniBlockHashEndpoint, api.address)
 	params := map[string]string{
 		"miniBlockHash": miniBlockHash,
 		"from":          fmt.Sprint(offset),
 		"size":          fmt.Sprint(limit),
 	}
-	err = api.get(endpoint, params, &txs, false)
+	err = api.get(txInfoByMiniBlockHashEndpoint, params, &txs, false)
 	return txs, err
 }
 
 func (api *API) GetMiniBlock(hash string) (miniBlock MiniBlock, err error) {
-	endpoint := fmt.Sprintf(miniblockByHashEndpoint, api.address, hash)
+	endpoint := fmt.Sprintf(miniblockByHashEndpoint, hash)
 	err = api.get(endpoint, nil, &miniBlock, false)
 	return miniBlock, err
 }
 
 func (api *API) GetBlock(height uint64, shard uint64) (block Block, err error) {
-	endpoint := fmt.Sprintf(blockByNonceAndShardEndpoint, api.address, shard, height)
+	endpoint := fmt.Sprintf(blockByNonceAndShardEndpoint, shard, height)
 	err = api.get(endpoint, nil, &block, true)
 	return block, err
 }
 
 func (api *API) GetBlockByHash(hash string, shard uint64) (block Block, err error) {
-	endpoint := fmt.Sprintf(blockByHashAndShardEndpoint, api.address, shard, hash)
+	endpoint := fmt.Sprintf(blockByHashAndShardEndpoint, shard, hash)
 	err = api.get(endpoint, nil, &block, true)
 	return block, err
 }
 
 func (api *API) GetHyperBlock(height uint64) (hyperBlock HyperBlock, err error) {
-	endpoint := fmt.Sprintf(hyperBlockByNonceEndpoint, api.address, height)
+	endpoint := fmt.Sprintf(hyperBlockByNonceEndpoint, height)
 	err = api.get(endpoint, nil, &hyperBlock, true)
 	return hyperBlock, err
 }
@@ -87,14 +97,21 @@ func (api *API) GetHyperBlock(height uint64) (hyperBlock HyperBlock, err error) 
 // GetMaxHeight returns current height of specific shard
 func (api *API) GetMaxHeight(shardIndex uint64) (height uint64, err error) {
 	var chainStatus ChainStatus
-	endpoint := fmt.Sprintf(networkInfoByShardEndpoint, api.address, shardIndex)
+	endpoint := fmt.Sprintf(networkInfoByShardEndpoint, shardIndex)
 	err = api.get(endpoint, nil, &chainStatus, true)
 	return chainStatus.Status.ErdHighestFinalNonce, err
 }
 
+func (api *API) GetAddress(address string) (resp Address, err error) {
+	endpoint := fmt.Sprintf(addressEndpoint, address)
+	err = api.get(endpoint, nil, &resp, true)
+	return resp, err
+}
+
 func (api *API) get(endpoint string, params map[string]string, result interface{}, wrapped bool) error {
 	<-time.After(time.Millisecond * 200) // todo make latency for tests
-	fullURL := fmt.Sprintf("%s", endpoint)
+
+	fullURL := fmt.Sprintf("%s%s", api.address, endpoint)
 	if len(params) != 0 {
 		values := url.Values{}
 		for key, value := range params {

@@ -37,7 +37,7 @@ var precisionDiv = decimal.New(1, precision)
 type (
 	Parser struct {
 		cfg       config.Config
-		node      nodeAPI
+		node      node.APIi
 		dao       dao.DAO
 		fetcherCh chan uint64
 		saverCh   chan data
@@ -45,15 +45,6 @@ type (
 		ctx       context.Context
 		cancel    context.CancelFunc
 		wg        *sync.WaitGroup
-	}
-	nodeAPI interface {
-		GetTxByHash(hash string) (tx node.TxDetails, err error)
-		GetTxsByMiniBlockHash(miniBlockHash string, offset, limit uint64) (txs []node.Tx, err error)
-		GetMiniBlock(hash string) (miniBlock node.MiniBlock, err error)
-		GetBlock(height uint64, shard uint64) (block node.Block, err error)
-		GetBlockByHash(hash string, shard uint64) (block node.Block, err error)
-		GetHyperBlock(height uint64) (hyperBlock node.HyperBlock, err error)
-		GetMaxHeight(shardIndex uint64) (height uint64, err error)
 	}
 	data struct {
 		height       uint64
@@ -188,7 +179,7 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 		})
 
 		for _, miniBlockInfo := range block.Block.Miniblocks {
-
+			// ignore same miniblocks
 			if _, ok := miniblocksRemain[miniBlockInfo.Hash]; ok {
 				continue
 			}
@@ -199,9 +190,14 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 				return d, fmt.Errorf("node.GetBlockByHash: %s", err.Error())
 			}
 
-			txs, err := p.node.GetTxsByMiniBlockHash(miniBlock.MiniBlockHash, 0, 1000) // todo check limit
+			txs, err := p.node.GetTxsByMiniBlockHash(miniBlock.MiniBlockHash, 0, 1000)
 			if err != nil {
 				return d, fmt.Errorf("node.GetTxsByMiniBlockHash: %s", err.Error())
+			}
+
+			// check number of txs from mini block
+			if len(txs) == 1000 {
+				return d, fmt.Errorf("the maximum number of transactions has been reached")
 			}
 
 			d.miniBlocks = append(d.miniBlocks, dmodels.MiniBlock{
@@ -331,9 +327,6 @@ func (p *Parser) saving() {
 			})
 			ticker = time.After(time.Second * 2)
 		}
-
-		// todo
-		// save via batch and timeout
 
 		var count int
 		for i, item := range dataset {

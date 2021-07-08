@@ -1,6 +1,8 @@
 package node
 
-import "github.com/shopspring/decimal"
+import (
+	"github.com/shopspring/decimal"
+)
 
 type (
 	ChainStatus struct {
@@ -107,5 +109,14 @@ type (
 		Timestamp int64  `json:"timestamp"`
 		Status    string `json:"status"`
 		Error     string `json:"error"`
+	}
+
+	Address struct {
+		Account struct {
+			Address  string          `json:"address"`
+			Nonce    int64           `json:"nonce"`
+			Balance  decimal.Decimal `json:"balance"`
+			Username string          `json:"username"`
+		} `json:"account"`
 	}
 )
