@@ -252,6 +252,7 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 					}
 
 					d.scResults = append(d.scResults, dmodels.SCResult{
+						Hash:   r.Hash,
 						TxHash: tx.Txhash,
 						From:   r.Sender,
 						To:     r.Receiver,

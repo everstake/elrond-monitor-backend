@@ -44,6 +44,7 @@ func (db Postgres) CreateBlocks(blocks []dmodels.Block) error {
 			b.CreatedAt,
 		)
 	}
+	q = q.Suffix("ON CONFLICT (blk_hash) DO NOTHING")
 	_, err := db.insert(q)
 	return err
 }
@@ -78,6 +79,7 @@ func (db Postgres) CreateMiniBlocks(blocks []dmodels.MiniBlock) error {
 			b.CreatedAt,
 		)
 	}
+	q = q.Suffix("ON CONFLICT (mlk_hash) DO NOTHING")
 	_, err := db.insert(q)
 	return err
 }

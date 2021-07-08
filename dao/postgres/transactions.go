@@ -50,6 +50,7 @@ func (db Postgres) CreateTransactions(transactions []dmodels.Transaction) error 
 			tx.CreatedAt,
 		)
 	}
+	q = q.Suffix("ON CONFLICT (trn_hash) DO NOTHING")
 	_, err := db.insert(q)
 	return err
 }
@@ -59,6 +60,7 @@ func (db Postgres) CreateSCResults(results []dmodels.SCResult) error {
 		return nil
 	}
 	q := squirrel.Insert(dmodels.SCResultsTable).Columns(
+		"scr_hash",
 		"trn_hash",
 		"scr_from",
 		"scr_to",
@@ -70,6 +72,7 @@ func (db Postgres) CreateSCResults(results []dmodels.SCResult) error {
 			return fmt.Errorf("field TxHash is empty")
 		}
 		q = q.Values(
+			r.Hash,
 			r.TxHash,
 			r.To,
 			r.From,
@@ -77,6 +80,7 @@ func (db Postgres) CreateSCResults(results []dmodels.SCResult) error {
 			r.Data,
 		)
 	}
+	q = q.Suffix("ON CONFLICT (scr_hash) DO NOTHING")
 	_, err := db.insert(q)
 	return err
 }
