@@ -1,4 +1,4 @@
-package swagger
+package smodels
 
 type Validator struct {
 	Name string `json:"name,omitempty"`

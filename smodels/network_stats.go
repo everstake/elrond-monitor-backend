@@ -1,4 +1,4 @@
-package swagger
+package smodels
 
 type NetworkStats struct {
 	TotalStake float64 `json:"total_stake,omitempty"`

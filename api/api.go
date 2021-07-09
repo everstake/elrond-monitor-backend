@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/everstake/elrond-monitor-backend/config"
 	"github.com/everstake/elrond-monitor-backend/dao"
-	"github.com/everstake/elrond-monitor-backend/dao/dmodels"
 	"github.com/everstake/elrond-monitor-backend/log"
 	"github.com/everstake/elrond-monitor-backend/services"
+	"github.com/everstake/elrond-monitor-backend/smodels"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/schema"
 	"github.com/rs/cors"
@@ -35,12 +35,12 @@ type errResponse struct {
 func NewAPI(cfg config.Config, svc services.Services, dao dao.DAO) *API {
 	sd := schema.NewDecoder()
 	sd.IgnoreUnknownKeys(true)
-	sd.RegisterConverter(dmodels.Time{}, func(s string) reflect.Value {
+	sd.RegisterConverter(smodels.Time{}, func(s string) reflect.Value {
 		timestamp, err := strconv.ParseInt(s, 10, 64)
 		if err != nil {
 			return reflect.Value{}
 		}
-		t := dmodels.NewTime(time.Unix(timestamp, 0))
+		t := smodels.NewTime(time.Unix(timestamp, 0))
 		return reflect.ValueOf(t)
 	})
 	return &API{
@@ -94,6 +94,9 @@ func (api *API) loadRoutes() {
 		{Path: "/", Method: http.MethodGet, Func: api.Index},
 		{Path: "/health", Method: http.MethodGet, Func: api.Health},
 		{Path: "/api", Method: http.MethodGet, Func: api.GetSwaggerAPI},
+
+		{Path: "/transaction/{hash}", Method: http.MethodGet, Func: api.GetTransaction},
+		{Path: "/transactions", Method: http.MethodGet, Func: api.GetTransactions},
 	})
 
 }

@@ -1,4 +1,4 @@
-package swagger
+package smodels
 
 type EpochStats struct {
 	Number float64 `json:"number,omitempty"`

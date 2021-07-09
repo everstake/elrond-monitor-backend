@@ -3,10 +3,14 @@ package services
 import (
 	"github.com/everstake/elrond-monitor-backend/config"
 	"github.com/everstake/elrond-monitor-backend/dao"
+	"github.com/everstake/elrond-monitor-backend/dao/filters"
+	"github.com/everstake/elrond-monitor-backend/smodels"
 )
 
 type (
 	Services interface {
+		GetTransactions(filter filters.Transactions) (txs []smodels.Tx, err error)
+		GetTransaction(hash string) (tx smodels.Tx, err error)
 	}
 
 

@@ -1,4 +1,4 @@
-package swagger
+package smodels
 
 type MarketStats struct {
 	MarketCap float64 `json:"market_cap,omitempty"`

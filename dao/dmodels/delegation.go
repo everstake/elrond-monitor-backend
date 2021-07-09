@@ -2,6 +2,7 @@ package dmodels
 
 import (
 	"github.com/shopspring/decimal"
+	"time"
 )
 
 const (
@@ -16,7 +17,7 @@ type (
 		Delegator string          `db:"dlg_delegator"`
 		Validator string          `db:"dlg_validator"`
 		Amount    decimal.Decimal `db:"dlg_amount"`
-		CreatedAt Time            `db:"dlg_created_at"`
+		CreatedAt time.Time       `db:"dlg_created_at"`
 	}
 
 	Stake struct {
@@ -25,6 +26,6 @@ type (
 		Delegator string          `db:"stk_delegator"`
 		Validator string          `db:"stk_validator"`
 		Amount    decimal.Decimal `db:"stk_amount"`
-		CreatedAt Time            `db:"stk_created_at"`
+		CreatedAt time.Time       `db:"stk_created_at"`
 	}
 )

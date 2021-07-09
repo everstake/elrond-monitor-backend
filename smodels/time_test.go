@@ -1,4 +1,4 @@
-package dmodels
+package smodels
 
 import (
 	"encoding/json"

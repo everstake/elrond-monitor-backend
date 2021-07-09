@@ -1,4 +1,4 @@
-package swagger
+package smodels
 
 type Account struct {
 	Address string `json:"address,omitempty"`

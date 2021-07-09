@@ -34,7 +34,6 @@ create table blocks
 );
 
 create type miniblock_type as ENUM ('TxBlock', 'SmartContractResultBlock', 'InvalidBlock', 'RewardsBlock');
-
 create table miniblocks
 (
     mlk_hash                varchar(64)    not null
@@ -42,13 +41,21 @@ create table miniblocks
             primary key,
     mlk_receiver_block_hash varchar(64),
     mlk_receiver_shard      bigint         not null,
-    mlk_sender_block_hash   varchar(64)    not null,
+    mlk_sender_block_hash   varchar(64)    not null
+        constraint miniblocks_blocks_blk_hash_fk
+            references blocks,
     mlk_sender_shard        bigint         not null,
     mlk_type                miniblock_type not null,
     mlk_created_at          timestamp(0)   not null
 );
-create type tx_status as ENUM ('success', 'fail');
 
+create index miniblocks_mlk_receiver_block_hash_index
+    on miniblocks (mlk_receiver_block_hash);
+
+create index miniblocks_mlk_sender_block_hash_index
+    on miniblocks (mlk_sender_block_hash);
+
+create type tx_status as ENUM ('success', 'fail');
 create table transactions
 (
     trn_hash            varchar(64)     not null
@@ -69,17 +76,28 @@ create table transactions
     trn_created_at      timestamp       not null
 );
 
+create index transactions_mlk_mini_block_hash_index
+    on transactions (mlk_mini_block_hash);
+);
+
 create table sc_results
 (
-    scr_hash  varchar(64) not null
+    scr_hash    varchar(64) not null
         constraint sc_results_pk
             primary key,
-    trn_hash  varchar(64) not null,
-    scr_from  varchar(62) not null,
-    scr_to    varchar(62) not null,
-    scr_value numeric(36) not null,
-    scr_data  text        not null
+    trn_hash    varchar(64) not null
+        constraint sc_results_transactions_trn_hash_fk
+            references transactions,
+    scr_from    varchar(62) not null,
+    scr_to      varchar(62) not null,
+    scr_value   numeric(36) not null,
+    scr_data    text        not null,
+    scr_message text        not null
 );
+
+create
+index sc_results_trn_hash_index
+    on sc_results (trn_hash);
 
 
 create table accounts

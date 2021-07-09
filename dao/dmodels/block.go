@@ -1,6 +1,9 @@
 package dmodels
 
-import "github.com/shopspring/decimal"
+import (
+	"github.com/shopspring/decimal"
+	"time"
+)
 
 const (
 	BlocksTable     = "blocks"
@@ -19,15 +22,15 @@ type (
 		PrevBlockHash   string          `db:"blk_prev_block_hash" json:"prev_block_hash"`
 		AccumulatedFees decimal.Decimal `db:"blk_accumulated_fees" json:"accumulated_fees"`
 		DeveloperFees   decimal.Decimal `db:"blk_developer_fees" json:"developer_fees"`
-		CreatedAt       Time            `db:"blk_created_at" json:"created_at"`
+		CreatedAt       time.Time       `db:"blk_created_at" json:"created_at"`
 	}
 	MiniBlock struct {
-		Hash              string `db:"mlk_hash" json:"hash"`
-		ReceiverBlockHash string `db:"mlk_receiver_block_hash" json:"receiver_block_hash"` // can be empty
-		ReceiverShard     uint64 `db:"mlk_receiver_shard" json:"receiver_shard"`
-		SenderBlockHash   string `db:"mlk_sender_block_hash" json:"sender_block_hash"`
-		SenderShard       uint64 `db:"mlk_sender_shard" json:"sender_shard"`
-		Type              string `db:"mlk_type" json:"type"` // type == TxBlock
-		CreatedAt         Time   `db:"mlk_created_at" json:"created_at"`
+		Hash              string    `db:"mlk_hash" json:"hash"`
+		ReceiverBlockHash string    `db:"mlk_receiver_block_hash" json:"receiver_block_hash"` // can be empty
+		ReceiverShard     uint64    `db:"mlk_receiver_shard" json:"receiver_shard"`
+		SenderBlockHash   string    `db:"mlk_sender_block_hash" json:"sender_block_hash"`
+		SenderShard       uint64    `db:"mlk_sender_shard" json:"sender_shard"`
+		Type              string    `db:"mlk_type" json:"type"` // type == TxBlock
+		CreatedAt         time.Time `db:"mlk_created_at" json:"created_at"`
 	}
 )

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Masterminds/squirrel"
 	"github.com/everstake/elrond-monitor-backend/dao/dmodels"
+	"github.com/everstake/elrond-monitor-backend/dao/filters"
 )
 
 func (db Postgres) CreateBlocks(blocks []dmodels.Block) error {
@@ -82,4 +83,31 @@ func (db Postgres) CreateMiniBlocks(blocks []dmodels.MiniBlock) error {
 	q = q.Suffix("ON CONFLICT (mlk_hash) DO NOTHING")
 	_, err := db.insert(q)
 	return err
+}
+
+func (db Postgres) GetBlocks(filter filters.Blocks) (blocks []dmodels.Block, err error) {
+	q := squirrel.Select("*").From(dmodels.BlocksTable)
+	if filter.Limit != 0 {
+		q = q.Limit(filter.Limit)
+	}
+	if filter.Offset() != 0 {
+		q = q.Offset(filter.Offset())
+	}
+	err = db.find(&blocks, q)
+	return blocks, err
+}
+
+func (db Postgres) GetBlock(hash string) (block dmodels.Block, err error) {
+	q := squirrel.Select("*").From(dmodels.BlocksTable).Where(squirrel.Eq{"blk_hash": hash})
+	err = db.first(&block, q)
+	return block, err
+}
+
+func (db Postgres) GetMiniBlocks(filter filters.MiniBlocks) (blocks []dmodels.MiniBlock, err error) {
+	q := squirrel.Select("*").From(dmodels.MiniBlocksTable)
+	if filter.ParentBlockHash != "" {
+		q = q.Where(squirrel.Or{squirrel.Eq{"mlk_sender_block_hash": filter.ParentBlockHash}, squirrel.Eq{"mlk_receiver_block_hash": filter.ParentBlockHash}})
+	}
+	err = db.find(&blocks, q)
+	return blocks, err
 }

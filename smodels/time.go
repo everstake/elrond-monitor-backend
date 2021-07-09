@@ -1,4 +1,4 @@
-package dmodels
+package smodels
 
 import (
 	"database/sql/driver"

@@ -162,8 +162,6 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 	miniblocksRemain := make(map[string]interface{})
 
 	for _, block := range hyperBlocks {
-		blockTimestamp := dmodels.NewTime(time.Unix(block.Block.Timestamp, 0))
-
 		d.blocks = append(d.blocks, dmodels.Block{
 			AccumulatedFees: decimal.New(block.Block.AccumulatedFees, 0).Div(precisionDiv),
 			DeveloperFees:   decimal.New(block.Block.DeveloperFees, 0).Div(precisionDiv),
@@ -175,7 +173,7 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 			Epoch:           block.Block.Epoch,
 			Status:          block.Block.Status,
 			PrevBlockHash:   block.Block.PrevBlockHash,
-			CreatedAt:       blockTimestamp,
+			CreatedAt:       time.Unix(block.Block.Timestamp, 0),
 		})
 
 		for _, miniBlockInfo := range block.Block.Miniblocks {
@@ -207,7 +205,7 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 				SenderBlockHash:   miniBlock.SenderBlockHash,
 				SenderShard:       miniBlock.SenderShard,
 				Type:              miniBlock.Type,
-				CreatedAt:         dmodels.NewTime(time.Unix(miniBlock.Timestamp, 0)),
+				CreatedAt:         time.Unix(miniBlock.Timestamp, 0),
 			})
 
 			for _, tx := range txs {
@@ -238,7 +236,7 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 					GasUsed:       tx.GasUsed,
 					Nonce:         tx.Nonce,
 					Data:          tx.Data,
-					CreatedAt:     dmodels.NewTime(time.Unix(tx.Timestamp, 0)),
+					CreatedAt:     time.Unix(tx.Timestamp, 0),
 				})
 
 				for _, r := range tx.ScResults {
@@ -248,12 +246,13 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 					}
 
 					d.scResults = append(d.scResults, dmodels.SCResult{
-						Hash:   r.Hash,
-						TxHash: tx.Txhash,
-						From:   r.Sender,
-						To:     r.Receiver,
-						Value:  v,
-						Data:   r.Data,
+						Hash:    r.Hash,
+						TxHash:  tx.Txhash,
+						From:    r.Sender,
+						To:      r.Receiver,
+						Value:   v,
+						Data:    r.Data,
+						Message: r.ReturnMessage,
 					})
 				}
 
@@ -434,13 +433,13 @@ func (p *Parser) saveNewAccounts(d data) {
 	}
 
 	for _, tx := range d.transactions {
-		addAccount(tx.Sender, tx.CreatedAt.Time)
-		addAccount(tx.Receiver, tx.CreatedAt.Time)
+		addAccount(tx.Sender, tx.CreatedAt)
+		addAccount(tx.Receiver, tx.CreatedAt)
 	}
 
 	for _, r := range d.scResults {
-		addAccount(r.From, d.blocks[0].CreatedAt.Time)
-		addAccount(r.To, d.blocks[0].CreatedAt.Time)
+		addAccount(r.From, d.blocks[0].CreatedAt)
+		addAccount(r.To, d.blocks[0].CreatedAt)
 	}
 
 	for {

@@ -1,13 +1,12 @@
-package swagger
+package smodels
+
+import "github.com/shopspring/decimal"
 
 type ScResult struct {
-	From string `json:"from,omitempty"`
-
-	To string `json:"to,omitempty"`
-
-	Value float64 `json:"value,omitempty"`
-
-	Data string `json:"data,omitempty"`
-
-	Message string `json:"message,omitempty"`
+	Hash    string          `json:"hash"`
+	From    string          `json:"from"`
+	To      string          `json:"to"`
+	Value   decimal.Decimal `json:"value,omitempty"`
+	Data    string          `json:"data,omitempty"`
+	Message string          `json:"message,omitempty"`
 }

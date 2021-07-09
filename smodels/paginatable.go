@@ -1,4 +1,4 @@
-package swagger
+package smodels
 
 type PaginatableResponse struct {
 	Count float64 `json:"count,omitempty"`

@@ -1,21 +1,13 @@
-package swagger
+package smodels
 
 type Block struct {
-	Hash string `json:"hash,omitempty"`
-
-	Nonce float64 `json:"nonce,omitempty"`
-
-	Shard string `json:"shard,omitempty"`
-
-	Epoch float64 `json:"epoch,omitempty"`
-
-	TxCount string `json:"tx_count,omitempty"`
-
-	Size float64 `json:"size,omitempty"`
-
-	Proposer string `json:"proposer,omitempty"`
-
+	Hash       string   `json:"hash"`
+	Nonce      float64  `json:"nonce"`
+	Shard      string   `json:"shard"`
+	Epoch      float64  `json:"epoch"`
+	TxCount    string   `json:"tx_count"`
+	Size       float64  `json:"size"`
+	Proposer   string   `json:"proposer"`
 	Miniblocks []string `json:"miniblocks,omitempty"`
-
-	Timestamp float64 `json:"timestamp,omitempty"`
+	Timestamp  float64  `json:"timestamp"`
 }

@@ -92,6 +92,7 @@ type (
 		RelayedValue   string `json:"relayedValue"`
 		Sender         string `json:"sender"`
 		Value          string `json:"value"`
+		ReturnMessage  string `json:"returnMessage"`
 	}
 
 	TxDetails struct {

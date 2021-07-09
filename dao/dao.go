@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/everstake/elrond-monitor-backend/config"
 	"github.com/everstake/elrond-monitor-backend/dao/dmodels"
+	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/dao/postgres"
 )
 
@@ -24,10 +25,16 @@ type (
 		// blocks
 		CreateBlocks(blocks []dmodels.Block) error
 		CreateMiniBlocks(blocks []dmodels.MiniBlock) error // type == TxBlock
+		GetBlocks(filter filters.Blocks) (blocks []dmodels.Block, err error)
+		GetBlock(hash string) (block dmodels.Block, err error)
+		GetMiniBlocks(filter filters.MiniBlocks) (blocks []dmodels.MiniBlock, err error)
 
 		// transcations
 		CreateTransactions(transactions []dmodels.Transaction) error
 		CreateSCResults(results []dmodels.SCResult) error
+		GetTransactions(filter filters.Transactions) (txs []dmodels.Transaction, err error)
+		GetTransaction(hash string) (tx dmodels.Transaction, err error)
+		GetSCResults(txHash string) (results []dmodels.SCResult, err error)
 	}
 
 	DAO interface {

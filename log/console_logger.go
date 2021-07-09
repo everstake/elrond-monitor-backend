@@ -8,6 +8,7 @@ import (
 
 const (
 	infoLvl  = "info"
+	debugLvl = "debug"
 	errorLvl = "error"
 )
 
@@ -21,6 +22,10 @@ func Error(format string, args ...interface{}) {
 
 func Fatal(format string, args ...interface{}) {
 	log.Fatalln(wrapper(format, infoLvl, args...))
+}
+
+func Debug(format string, args ...interface{}) {
+	fmt.Println(wrapper(format, debugLvl, args...))
 }
 
 func wrapper(txt string, lvl string, args ...interface{}) string {

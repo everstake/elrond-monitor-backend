@@ -2,6 +2,7 @@ package dmodels
 
 import (
 	"github.com/shopspring/decimal"
+	"time"
 )
 
 const (
@@ -26,5 +27,5 @@ type Transaction struct {
 	GasUsed       uint64          `db:"trn_gas_used"`
 	Nonce         uint64          `db:"trn_nonce"`
 	Data          string          `db:"trn_data"`
-	CreatedAt     Time            `db:"trn_created_at"`
+	CreatedAt     time.Time       `db:"trn_created_at"`
 }
