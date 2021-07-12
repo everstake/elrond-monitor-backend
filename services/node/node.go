@@ -20,6 +20,8 @@ const (
 	hyperBlockByNonceEndpoint     = "/hyperblock/by-nonce/%d"
 	networkInfoByShardEndpoint    = "/network/status/%d"
 	addressEndpoint               = "/address/%s"
+
+	blockExtraDataEndpoint    = "/blocks/%s"
 )
 
 type (
@@ -42,6 +44,7 @@ type (
 		GetBlockByHash(hash string, shard uint64) (block Block, err error)
 		GetHyperBlock(height uint64) (hyperBlock HyperBlock, err error)
 		GetMaxHeight(shardIndex uint64) (height uint64, err error)
+		GetExtraDataBlock(hash string) (block BlockExtraData, err error)
 	}
 )
 
@@ -85,6 +88,12 @@ func (api *API) GetBlock(height uint64, shard uint64) (block Block, err error) {
 func (api *API) GetBlockByHash(hash string, shard uint64) (block Block, err error) {
 	endpoint := fmt.Sprintf(blockByHashAndShardEndpoint, shard, hash)
 	err = api.get(endpoint, nil, &block, true)
+	return block, err
+}
+
+func (api *API) GetExtraDataBlock(hash string) (block BlockExtraData, err error) {
+	endpoint := fmt.Sprintf(blockExtraDataEndpoint, hash)
+	err = api.get(endpoint, nil, &block, false)
 	return block, err
 }
 

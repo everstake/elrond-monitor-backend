@@ -2,12 +2,12 @@ package smodels
 
 type Block struct {
 	Hash       string   `json:"hash"`
-	Nonce      float64  `json:"nonce"`
-	Shard      string   `json:"shard"`
-	Epoch      float64  `json:"epoch"`
-	TxCount    string   `json:"tx_count"`
-	Size       float64  `json:"size"`
-	Proposer   string   `json:"proposer"`
+	Nonce      uint64   `json:"nonce"`
+	Shard      uint64   `json:"shard"`
+	Epoch      uint64   `json:"epoch"`
+	TxCount    uint64   `json:"tx_count"`
+	Size       uint64   `json:"size,omitempty"`
+	Proposer   string   `json:"propose,omitemptyr"`
 	Miniblocks []string `json:"miniblocks,omitempty"`
-	Timestamp  float64  `json:"timestamp"`
+	Timestamp  Time     `json:"timestamp"`
 }

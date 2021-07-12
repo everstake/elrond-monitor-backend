@@ -103,6 +103,12 @@ func (db Postgres) GetBlock(hash string) (block dmodels.Block, err error) {
 	return block, err
 }
 
+func (db Postgres) GetBlocksTotal(filter filters.Blocks) (total uint64, err error) {
+	q := squirrel.Select("count(*) as total").From(dmodels.BlocksTable)
+	err = db.first(&total, q)
+	return total, err
+}
+
 func (db Postgres) GetMiniBlocks(filter filters.MiniBlocks) (blocks []dmodels.MiniBlock, err error) {
 	q := squirrel.Select("*").From(dmodels.MiniBlocksTable)
 	if filter.ParentBlockHash != "" {
@@ -110,4 +116,19 @@ func (db Postgres) GetMiniBlocks(filter filters.MiniBlocks) (blocks []dmodels.Mi
 	}
 	err = db.find(&blocks, q)
 	return blocks, err
+}
+
+func (db Postgres) GetMiniBlock(hash string) (block dmodels.MiniBlock, err error) {
+	q := squirrel.Select("*").From(dmodels.MiniBlocksTable).Where(squirrel.Eq{"mlk_hash": hash})
+	err = db.first(&block, q)
+	return block, err
+}
+
+func (db Postgres) GetMiniBlocksTotal(filter filters.MiniBlocks) (total uint64, err error) {
+	q := squirrel.Select("count(*) as total").From(dmodels.BlocksTable)
+	if filter.ParentBlockHash != "" {
+		q = q.Where(squirrel.Or{squirrel.Eq{"mlk_sender_block_hash": filter.ParentBlockHash}, squirrel.Eq{"mlk_receiver_block_hash": filter.ParentBlockHash}})
+	}
+	err = db.first(&total, q)
+	return total, err
 }

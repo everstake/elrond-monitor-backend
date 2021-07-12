@@ -95,8 +95,12 @@ func (api *API) loadRoutes() {
 		{Path: "/health", Method: http.MethodGet, Func: api.Health},
 		{Path: "/api", Method: http.MethodGet, Func: api.GetSwaggerAPI},
 
-		{Path: "/transaction/{hash}", Method: http.MethodGet, Func: api.GetTransaction},
 		{Path: "/transactions", Method: http.MethodGet, Func: api.GetTransactions},
+		{Path: "/transaction/{hash}", Method: http.MethodGet, Func: api.GetTransaction},
+		{Path: "/blocks", Method: http.MethodGet, Func: api.GetBlocks},
+		{Path: "/block/{hash}", Method: http.MethodGet, Func: api.GetBlock},
+		{Path: "/accounts", Method: http.MethodGet, Func: api.GetAccounts},
+		{Path: "/miniblock/{hash}", Method: http.MethodGet, Func: api.GetMiniBlock},
 	})
 
 }

@@ -6,12 +6,12 @@ import (
 	"github.com/everstake/elrond-monitor-backend/smodels"
 )
 
-func (s *ServiceFacade) GetTransactions(filter filters.Transactions) (txs []smodels.Tx, err error) {
+func (s *ServiceFacade) GetTransactions(filter filters.Transactions) (items smodels.Pagination, err error) {
 	dTxs, err := s.dao.GetTransactions(filter)
 	if err != nil {
-		return nil, fmt.Errorf("dao.GetTransactions: %s", err.Error())
+		return items, fmt.Errorf("dao.GetTransactions: %s", err.Error())
 	}
-	txs = make([]smodels.Tx, len(dTxs))
+	txs := make([]smodels.Tx, len(dTxs))
 	for i, tx := range dTxs {
 		txs[i] = smodels.Tx{
 			Hash:          tx.Hash,
@@ -28,7 +28,14 @@ func (s *ServiceFacade) GetTransactions(filter filters.Transactions) (txs []smod
 			Timestamp:     smodels.NewTime(tx.CreatedAt),
 		}
 	}
-	return txs, nil
+	total, err := s.dao.GetTransactionsTotal(filter)
+	if err != nil {
+		return items, fmt.Errorf("dao.GetTransactionsTotal: %s", err.Error())
+	}
+	return smodels.Pagination{
+		Items: txs,
+		Count: total,
+	}, nil
 }
 
 func (s *ServiceFacade) GetTransaction(hash string) (tx smodels.Tx, err error) {
@@ -50,7 +57,7 @@ func (s *ServiceFacade) GetTransaction(hash string) (tx smodels.Tx, err error) {
 			Message: r.Message,
 		}
 	}
-	tx = smodels.Tx{
+	return smodels.Tx{
 		Hash:          dTx.Hash,
 		Status:        dTx.Status,
 		From:          dTx.Sender,
@@ -64,6 +71,5 @@ func (s *ServiceFacade) GetTransaction(hash string) (tx smodels.Tx, err error) {
 		Type:          "", // todo
 		ScResults:     results,
 		Timestamp:     smodels.NewTime(dTx.CreatedAt),
-	}
-	return tx, nil
+	}, nil
 }

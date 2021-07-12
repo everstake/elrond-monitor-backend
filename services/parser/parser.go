@@ -7,6 +7,7 @@ import (
 	"github.com/everstake/elrond-monitor-backend/config"
 	"github.com/everstake/elrond-monitor-backend/dao"
 	"github.com/everstake/elrond-monitor-backend/dao/dmodels"
+	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/log"
 	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/shopspring/decimal"
@@ -406,7 +407,7 @@ func (p *Parser) setAccounts() {
 	var accounts []dmodels.Account
 	var err error
 	for {
-		accounts, err = p.dao.GetAccounts()
+		accounts, err = p.dao.GetAccounts(filters.Accounts{})
 		if err != nil {
 			log.Error("Parser: setAccounts: dao.GetAccounts: %s", err.Error())
 			<-time.After(repeatDelay)

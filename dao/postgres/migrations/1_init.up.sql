@@ -41,9 +41,7 @@ create table miniblocks
             primary key,
     mlk_receiver_block_hash varchar(64),
     mlk_receiver_shard      bigint         not null,
-    mlk_sender_block_hash   varchar(64)    not null
-        constraint miniblocks_blocks_blk_hash_fk
-            references blocks,
+    mlk_sender_block_hash   varchar(64)    not null,
     mlk_sender_shard        bigint         not null,
     mlk_type                miniblock_type not null,
     mlk_created_at          timestamp(0)   not null
@@ -78,7 +76,6 @@ create table transactions
 
 create index transactions_mlk_mini_block_hash_index
     on transactions (mlk_mini_block_hash);
-);
 
 create table sc_results
 (

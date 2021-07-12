@@ -47,6 +47,23 @@ type (
 		} `json:"block"`
 	}
 
+	BlockExtraData struct {
+		Epoch         uint64   `json:"epoch"`
+		Hash          string   `json:"hash"`
+		Nonce         uint64   `json:"nonce"`
+		TxCount       uint64   `json:"txCount"`
+		Shard         uint64   `json:"shard"`
+		Timestamp     int64    `json:"timestamp"`
+		Round         uint64   `json:"round"`
+		PrevHash      string   `json:"prevHash"`
+		Proposer      string   `json:"proposer"`
+		SizeTxs       uint64   `json:"sizeTxs"`
+		Size          uint64   `json:"size"`
+		StateRootHash string   `json:"stateRootHash"`
+		Validators    []string `json:"validators"`
+		PubKeyBitmap  string   `json:"pubKeyBitmap"`
+	}
+
 	MiniBlock struct {
 		MiniBlockHash     string `json:"miniBlockHash"`
 		ReceiverBlockHash string `json:"receiverBlockHash"`

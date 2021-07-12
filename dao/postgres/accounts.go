@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Masterminds/squirrel"
 	"github.com/everstake/elrond-monitor-backend/dao/dmodels"
+	"github.com/everstake/elrond-monitor-backend/dao/filters"
 )
 
 func (db Postgres) CreateAccounts(accounts []dmodels.Account) error {
@@ -30,13 +31,19 @@ func (db Postgres) CreateAccounts(accounts []dmodels.Account) error {
 	return err
 }
 
-func (db Postgres) GetAccounts() (accounts []dmodels.Account, err error) {
-	q := squirrel.Select("*").From(dmodels.AccountsTable)
+func (db Postgres) GetAccounts(filter filters.Accounts) (accounts []dmodels.Account, err error) {
+	q := squirrel.Select("*").From(dmodels.AccountsTable).OrderBy("acc_created_at DESC")
+	if filter.Limit != 0 {
+		q = q.Limit(filter.Limit)
+	}
+	if filter.Offset() != 0 {
+		q = q.Offset(filter.Offset())
+	}
 	err = db.find(&accounts, q)
 	return accounts, err
 }
 
-func (db Postgres) GetAccountsTotal() (total uint64, err error) {
+func (db Postgres) GetAccountsTotal(filter filters.Accounts) (total uint64, err error) {
 	q := squirrel.Select("count(*) as total").From(dmodels.AccountsTable)
 	err = db.first(&total, q)
 	return total, err

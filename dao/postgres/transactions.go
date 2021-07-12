@@ -93,6 +93,9 @@ func (db Postgres) GetTransactions(filter filters.Transactions) (txs []dmodels.T
 	if filter.Address != "" {
 		q = q.Where(squirrel.Or{squirrel.Eq{"trn_sender": filter.Address}, squirrel.Eq{"trn_receiver": filter.Address}})
 	}
+	if filter.MiniBlock != "" {
+		q = q.Where(squirrel.Eq{"mlk_mini_block_hash": filter.MiniBlock})
+	}
 	if filter.Limit != 0 {
 		q = q.Limit(filter.Limit)
 	}
@@ -101,6 +104,18 @@ func (db Postgres) GetTransactions(filter filters.Transactions) (txs []dmodels.T
 	}
 	err = db.find(&txs, q)
 	return txs, err
+}
+
+func (db Postgres) GetTransactionsTotal(filter filters.Transactions) (total uint64, err error) {
+	q := squirrel.Select("count(*) as total").From(dmodels.TransactionsTable)
+	if filter.Address != "" {
+		q = q.Where(squirrel.Or{squirrel.Eq{"trn_sender": filter.Address}, squirrel.Eq{"trn_receiver": filter.Address}})
+	}
+	if filter.MiniBlock != "" {
+		q = q.Where(squirrel.Eq{"mlk_mini_block_hash": filter.MiniBlock})
+	}
+	err = db.first(&total, q)
+	return total, err
 }
 
 func (db Postgres) GetTransaction(hash string) (tx dmodels.Transaction, err error) {
