@@ -1,0 +1,34 @@
+version: "3.7"
+services:
+  go:
+    restart: always
+    ports:
+      - "6000:6000"
+    container_name: elrond-monitor-backend
+    build: .
+    volumes:
+      - ./:/elrond-monitor-backend
+      - ~/.ssh:/root/.ssh
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+    deploy:
+      resources:
+        limits:
+          memory: 5000M
+        reservations:
+          memory: 2000M
+  postgres:
+    restart: always
+    container_name: elrond-monitor-backend-postgres
+    image: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - /postgresql:/var/lib/postgresql
+    env_file:
+      - ./.env
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"

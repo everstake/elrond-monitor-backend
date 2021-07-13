@@ -20,8 +20,10 @@ const (
 	hyperBlockByNonceEndpoint     = "/hyperblock/by-nonce/%d"
 	networkInfoByShardEndpoint    = "/network/status/%d"
 	addressEndpoint               = "/address/%s"
-
-	blockExtraDataEndpoint    = "/blocks/%s"
+	blockExtraDataEndpoint        = "/blocks/%s"
+	statsEndpoint                 = "/stats"
+	identitiesEndpoint            = "/identities"
+	economicsEndpoint             = "/economics"
 )
 
 type (
@@ -45,6 +47,9 @@ type (
 		GetHyperBlock(height uint64) (hyperBlock HyperBlock, err error)
 		GetMaxHeight(shardIndex uint64) (height uint64, err error)
 		GetExtraDataBlock(hash string) (block BlockExtraData, err error)
+		GetStats() (stats Stats, err error)
+		GetIdentities() (identities []Identity, err error)
+		GetEconomics() (economics []Economics, err error)
 	}
 )
 
@@ -115,6 +120,21 @@ func (api *API) GetAddress(address string) (resp Address, err error) {
 	endpoint := fmt.Sprintf(addressEndpoint, address)
 	err = api.get(endpoint, nil, &resp, true)
 	return resp, err
+}
+
+func (api *API) GetStats() (stats Stats, err error) {
+	err = api.get(statsEndpoint, nil, &stats, false)
+	return stats, err
+}
+
+func (api *API) GetIdentities() (identities []Identity, err error) {
+	err = api.get(identitiesEndpoint, nil, &identities, false)
+	return identities, err
+}
+
+func (api *API) GetEconomics() (economics []Economics, err error) {
+	err = api.get(economicsEndpoint, nil, &economics, false)
+	return economics, err
 }
 
 func (api *API) get(endpoint string, params map[string]string, result interface{}, wrapped bool) error {
