@@ -11,6 +11,7 @@ const (
 	TxStatusPending = "pending"
 	TxStatusSuccess = "success"
 	TxStatusFail    = "fail"
+	TxStatusInvalid = "invalid"
 )
 
 type Transaction struct {

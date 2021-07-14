@@ -53,7 +53,7 @@ create index miniblocks_mlk_receiver_block_hash_index
 create index miniblocks_mlk_sender_block_hash_index
     on miniblocks (mlk_sender_block_hash);
 
-create type tx_status as ENUM ('success', 'fail');
+create type tx_status as ENUM ('success', 'fail', 'invalid');
 create table transactions
 (
     trn_hash            varchar(64)     not null
@@ -93,7 +93,7 @@ create table sc_results
 );
 
 create
-index sc_results_trn_hash_index
+    index sc_results_trn_hash_index
     on sc_results (trn_hash);
 
 

@@ -39,6 +39,10 @@ type (
 		GetTransaction(hash string) (tx dmodels.Transaction, err error)
 		GetTransactionsTotal(filter filters.Transactions) (total uint64, err error)
 		GetSCResults(txHash string) (results []dmodels.SCResult, err error)
+
+		// storage
+		GetStorageValue(key string) (value string, err error)
+		UpdateStorageValue(item dmodels.StorageItem) error
 	}
 
 	DAO interface {

@@ -11,6 +11,7 @@ import (
 	"github.com/everstake/elrond-monitor-backend/log"
 	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/shopspring/decimal"
+	"math/big"
 	"sort"
 	"strings"
 	"sync"
@@ -213,7 +214,7 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 				switch strings.ToLower(tx.Status) {
 				case dmodels.TxStatusPending:
 					return d, fmt.Errorf("found pending tx: %s", tx.Txhash)
-				case dmodels.TxStatusSuccess, dmodels.TxStatusFail:
+				case dmodels.TxStatusSuccess, dmodels.TxStatusFail, dmodels.TxStatusInvalid:
 				default:
 					return d, fmt.Errorf("unknown tx status: %s", tx.Status)
 				}
@@ -261,30 +262,135 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 				if err != nil {
 					return d, fmt.Errorf("base64.DecodeString: %s", err.Error())
 				}
+
+				/*
+				     mixed sorting sc_results
+
+					 examples:
+						delegate - 44b7729c15b4ae36e56d742ed81d2510a347033f73e9c5db2d117917c4996a13
+						unDelegate - 596155353284baf98a5b9a539ab941898ac58c36f8ce54c642af5b264aac8338
+						reDelegateRewards 10c8d8f23973ff3a00ae86fc0f4b6ae2a70105d46ecdb702cabfdd99e27363d4
+						claimRewards - 743c6d62f0037d876e3f41284e8af2595ce5d63bc0b1bf08281b36f182c3bb83
+						unStake - d10adba96c063a55c1b369094073c41ae57286fab53c25cf8489d9c4c4ffbb18
+						stake - 7c7db6eea2b3f2aef9875f91300e149b5b379d86456110eca57545f3aa087886
+						unBond - c6c32820df1b44af828121d52207904c53230e9dd3a794e90e714915a68806d4
+
+				*/
 				if tx.Status == dmodels.TxStatusSuccess {
 					txType := string(decodedBytes)
 					switch txType {
+					case "withdraw":
+						// todo research
 					case "stake":
+						d.stakes = append(d.stakes, dmodels.Stake{
+							ID:        tx.Txhash,
+							TxHash:    tx.Txhash,
+							Delegator: tx.Sender,
+							Validator: tx.Receiver,
+							Amount:    amount.Div(precisionDiv),
+							CreatedAt: time.Unix(tx.Timestamp, 0),
+						})
 					case "reDelegateRewards": // create delegation + claimRewards
+						if len(tx.ScResults) != 2 {
+							continue
+						}
+						if tx.Sender != tx.ScResults[1].Receiver {
+							fmt.Println("reDelegateRewards different delegators") // todo delete it
+							continue
+						}
+						a, err := decimal.NewFromString(tx.ScResults[0].Value)
+						if err != nil {
+							return d, fmt.Errorf("decimal.NewFromString: %s", err.Error())
+						}
+						d.rewards = append(d.rewards, dmodels.Reward{
+							ID:              tx.Txhash,
+							HypeblockID:     nonce,
+							TxHash:          tx.Txhash,
+							ReceiverAddress: tx.Sender,
+							Amount:          a.Div(precisionDiv),
+							CreatedAt:       time.Unix(tx.Timestamp, 0),
+						})
+						d.delegations = append(d.delegations, dmodels.Delegation{
+							ID:        tx.Txhash,
+							Delegator: tx.Sender,
+							TxHash:    tx.Txhash,
+							Validator: tx.Receiver,
+							Amount:    a.Div(precisionDiv),
+							CreatedAt: time.Unix(tx.Timestamp, 0),
+						})
 					case "reStakeRewards": // create stake + claimRewards (check existence of reStakeRewards tx)
+						fmt.Println(txType, tx.Txhash)
 					case "delegate":
+						if len(tx.ScResults) != 2 {
+							continue
+						}
+						if tx.Sender != tx.ScResults[1].Receiver {
+							fmt.Println("delegate different delegators") // todo delete it
+							continue
+						}
+						d.delegations = append(d.delegations, dmodels.Delegation{
+							ID:        tx.Txhash,
+							Delegator: tx.Sender,
+							TxHash:    tx.Txhash,
+							Validator: tx.Receiver,
+							Amount:    amount.Div(precisionDiv),
+							CreatedAt: time.Unix(tx.Timestamp, 0),
+						})
 					case "claimRewards":
+						if len(tx.ScResults) != 2 {
+							continue
+						}
+						if tx.Sender != tx.ScResults[0].Receiver {
+							fmt.Println("claimRewards different delegators") // todo delete it
+							continue
+						}
+						reward, err := decimal.NewFromString(tx.ScResults[1].Value)
+						if err != nil {
+							return d, fmt.Errorf("decimal.NewFromString: %s", err.Error())
+						}
+						d.rewards = append(d.rewards, dmodels.Reward{
+							ID:              tx.Txhash,
+							HypeblockID:     nonce,
+							TxHash:          tx.Txhash,
+							ReceiverAddress: tx.Sender,
+							Amount:          reward.Div(precisionDiv),
+							CreatedAt:       time.Unix(tx.Timestamp, 0),
+						})
 					case "unBond":
+						fmt.Println(txType, tx.Txhash)
 					default:
 						if strings.Contains(txType, "unBond") {
-							//fmt.Println(txType, tx.Txhash)
+							fmt.Println(txType, 2, tx.Txhash)
 						}
 						if strings.Contains(txType, "relayedTx") {
 							//fmt.Println(txType, tx.Txhash)
 						}
 						if strings.Contains(txType, "unDelegate") {
-							//fmt.Println(txType, tx.Txhash)
+							amountData := strings.TrimLeft(txType, "unDelegate@")
+							a := (&big.Int{}).SetBytes([]byte(amountData))
+							d.delegations = append(d.delegations, dmodels.Delegation{
+								ID:        tx.Txhash,
+								Delegator: tx.Sender,
+								TxHash:    tx.Txhash,
+								Validator: tx.Receiver,
+								Amount:    decimal.NewFromBigInt(a, 0).Div(precisionDiv).Neg(),
+								CreatedAt: time.Unix(tx.Timestamp, 0),
+							})
 						}
 						if strings.Contains(txType, "unStake") {
-							//fmt.Println(txType, tx.Txhash)
+							amountData := strings.TrimLeft(txType, "unStake@")
+							a := (&big.Int{}).SetBytes([]byte(amountData))
+							d.stakes = append(d.stakes, dmodels.Stake{
+								ID:        tx.Txhash,
+								TxHash:    tx.Txhash,
+								Delegator: tx.Sender,
+								Validator: tx.Receiver,
+								Amount:    decimal.NewFromBigInt(a, 0).Div(precisionDiv).Neg(),
+								CreatedAt: time.Unix(tx.Timestamp, 0),
+							})
 						}
 						if strings.Contains(txType, "reStakeRewards") { // check existence of reStakeRewards tx
-							//fmt.Println(txType, tx.Txhash)
+							fmt.Println(txType, tx.Txhash)
 						}
 					}
 				}

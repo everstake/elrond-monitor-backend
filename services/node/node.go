@@ -24,6 +24,7 @@ const (
 	statsEndpoint                 = "/stats"
 	identitiesEndpoint            = "/identities"
 	economicsEndpoint             = "/economics"
+	networkStatusEndpoint         = "/network/status/%d"
 )
 
 type (
@@ -50,6 +51,7 @@ type (
 		GetStats() (stats Stats, err error)
 		GetIdentities() (identities []Identity, err error)
 		GetEconomics() (economics []Economics, err error)
+		GetNetworkStatus(shardID uint64) (status NetworkStatus, err error)
 	}
 )
 
@@ -135,6 +137,12 @@ func (api *API) GetIdentities() (identities []Identity, err error) {
 func (api *API) GetEconomics() (economics []Economics, err error) {
 	err = api.get(economicsEndpoint, nil, &economics, false)
 	return economics, err
+}
+
+func (api *API) GetNetworkStatus(shardID uint64) (status NetworkStatus, err error) {
+	endpoint := fmt.Sprintf(networkStatusEndpoint, shardID)
+	err = api.get(endpoint, nil, &status, true)
+	return status, err
 }
 
 func (api *API) get(endpoint string, params map[string]string, result interface{}, wrapped bool) error {
