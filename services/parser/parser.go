@@ -3,6 +3,7 @@ package parser
 import (
 	"context"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"github.com/everstake/elrond-monitor-backend/config"
 	"github.com/everstake/elrond-monitor-backend/dao"
@@ -210,6 +211,8 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 				CreatedAt:         time.Unix(miniBlock.Timestamp, 0),
 			})
 
+			// todo some Tx doesn`t have scResults
+
 			for _, tx := range txs {
 				switch strings.ToLower(tx.Status) {
 				case dmodels.TxStatusPending:
@@ -264,98 +267,43 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 				}
 
 				/*
-				     mixed sorting sc_results
+					     mixed sorting sc_results
 
-					 examples:
-						delegate - 44b7729c15b4ae36e56d742ed81d2510a347033f73e9c5db2d117917c4996a13
-						unDelegate - 596155353284baf98a5b9a539ab941898ac58c36f8ce54c642af5b264aac8338
-						reDelegateRewards 10c8d8f23973ff3a00ae86fc0f4b6ae2a70105d46ecdb702cabfdd99e27363d4
-						claimRewards - 743c6d62f0037d876e3f41284e8af2595ce5d63bc0b1bf08281b36f182c3bb83
-						unStake - d10adba96c063a55c1b369094073c41ae57286fab53c25cf8489d9c4c4ffbb18
-						stake - 7c7db6eea2b3f2aef9875f91300e149b5b379d86456110eca57545f3aa087886
-						unBond - c6c32820df1b44af828121d52207904c53230e9dd3a794e90e714915a68806d4
+						 examples:
+							delegate - 44b7729c15b4ae36e56d742ed81d2510a347033f73e9c5db2d117917c4996a13
+							unDelegate - 596155353284baf98a5b9a539ab941898ac58c36f8ce54c642af5b264aac8338
+							reDelegateRewards 10c8d8f23973ff3a00ae86fc0f4b6ae2a70105d46ecdb702cabfdd99e27363d4
+							claimRewards - 743c6d62f0037d876e3f41284e8af2595ce5d63bc0b1bf08281b36f182c3bb83
+							unStake - d10adba96c063a55c1b369094073c41ae57286fab53c25cf8489d9c4c4ffbb18
+							stake - 7c7db6eea2b3f2aef9875f91300e149b5b379d86456110eca57545f3aa087886
+							unBond - c6c32820df1b44af828121d52207904c53230e9dd3a794e90e714915a68806d4
 
 				*/
 				if tx.Status == dmodels.TxStatusSuccess {
 					txType := string(decodedBytes)
 					switch txType {
-					case "withdraw":
-						// todo research
 					case "stake":
-						d.stakes = append(d.stakes, dmodels.Stake{
-							ID:        tx.Txhash,
-							TxHash:    tx.Txhash,
-							Delegator: tx.Sender,
-							Validator: tx.Receiver,
-							Amount:    amount.Div(precisionDiv),
-							CreatedAt: time.Unix(tx.Timestamp, 0),
-						})
-					case "reDelegateRewards": // create delegation + claimRewards
-						if len(tx.ScResults) != 2 {
-							continue
-						}
-						if tx.Sender != tx.ScResults[1].Receiver {
-							fmt.Println("reDelegateRewards different delegators") // todo delete it
-							continue
-						}
-						a, err := decimal.NewFromString(tx.ScResults[0].Value)
+						err = d.parseStake(tx, txType)
 						if err != nil {
-							return d, fmt.Errorf("decimal.NewFromString: %s", err.Error())
+							return d, fmt.Errorf("parseStake: %s", err.Error())
 						}
-						d.rewards = append(d.rewards, dmodels.Reward{
-							ID:              tx.Txhash,
-							HypeblockID:     nonce,
-							TxHash:          tx.Txhash,
-							ReceiverAddress: tx.Sender,
-							Amount:          a.Div(precisionDiv),
-							CreatedAt:       time.Unix(tx.Timestamp, 0),
-						})
-						d.delegations = append(d.delegations, dmodels.Delegation{
-							ID:        tx.Txhash,
-							Delegator: tx.Sender,
-							TxHash:    tx.Txhash,
-							Validator: tx.Receiver,
-							Amount:    a.Div(precisionDiv),
-							CreatedAt: time.Unix(tx.Timestamp, 0),
-						})
+					case "reDelegateRewards": // create delegation + claimRewards
+						err = d.parseRewardDelegations(tx, nonce)
+						if err != nil {
+							return d, fmt.Errorf("parseRewardDelegations: %s", err.Error())
+						}
 					case "reStakeRewards": // create stake + claimRewards (check existence of reStakeRewards tx)
 						fmt.Println(txType, tx.Txhash)
 					case "delegate":
-						if len(tx.ScResults) != 2 {
-							continue
-						}
-						if tx.Sender != tx.ScResults[1].Receiver {
-							fmt.Println("delegate different delegators") // todo delete it
-							continue
-						}
-						d.delegations = append(d.delegations, dmodels.Delegation{
-							ID:        tx.Txhash,
-							Delegator: tx.Sender,
-							TxHash:    tx.Txhash,
-							Validator: tx.Receiver,
-							Amount:    amount.Div(precisionDiv),
-							CreatedAt: time.Unix(tx.Timestamp, 0),
-						})
-					case "claimRewards":
-						if len(tx.ScResults) != 2 {
-							continue
-						}
-						if tx.Sender != tx.ScResults[0].Receiver {
-							fmt.Println("claimRewards different delegators") // todo delete it
-							continue
-						}
-						reward, err := decimal.NewFromString(tx.ScResults[1].Value)
+						err = d.parseDelegations(tx)
 						if err != nil {
-							return d, fmt.Errorf("decimal.NewFromString: %s", err.Error())
+							return d, fmt.Errorf("parseDelegations: %s", err.Error())
 						}
-						d.rewards = append(d.rewards, dmodels.Reward{
-							ID:              tx.Txhash,
-							HypeblockID:     nonce,
-							TxHash:          tx.Txhash,
-							ReceiverAddress: tx.Sender,
-							Amount:          reward.Div(precisionDiv),
-							CreatedAt:       time.Unix(tx.Timestamp, 0),
-						})
+					case "claimRewards":
+						err = d.parseRewardClaims(tx, nonce)
+						if err != nil {
+							return d, fmt.Errorf("parseRewardClaims: %s", err.Error())
+						}
 					case "unBond":
 						fmt.Println(txType, tx.Txhash)
 					default:
@@ -366,28 +314,16 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 							//fmt.Println(txType, tx.Txhash)
 						}
 						if strings.Contains(txType, "unDelegate") {
-							amountData := strings.TrimLeft(txType, "unDelegate@")
-							a := (&big.Int{}).SetBytes([]byte(amountData))
-							d.delegations = append(d.delegations, dmodels.Delegation{
-								ID:        tx.Txhash,
-								Delegator: tx.Sender,
-								TxHash:    tx.Txhash,
-								Validator: tx.Receiver,
-								Amount:    decimal.NewFromBigInt(a, 0).Div(precisionDiv).Neg(),
-								CreatedAt: time.Unix(tx.Timestamp, 0),
-							})
+							err = d.parseUndelegations(tx, txType)
+							if err != nil {
+								return d, fmt.Errorf("parseUndelegations: %s", err.Error())
+							}
 						}
 						if strings.Contains(txType, "unStake") {
-							amountData := strings.TrimLeft(txType, "unStake@")
-							a := (&big.Int{}).SetBytes([]byte(amountData))
-							d.stakes = append(d.stakes, dmodels.Stake{
-								ID:        tx.Txhash,
-								TxHash:    tx.Txhash,
-								Delegator: tx.Sender,
-								Validator: tx.Receiver,
-								Amount:    decimal.NewFromBigInt(a, 0).Div(precisionDiv).Neg(),
-								CreatedAt: time.Unix(tx.Timestamp, 0),
-							})
+							err = d.parseUnstake(tx, txType)
+							if err != nil {
+								return d, fmt.Errorf("parseUnstake: %s", err.Error())
+							}
 						}
 						if strings.Contains(txType, "reStakeRewards") { // check existence of reStakeRewards tx
 							fmt.Println(txType, tx.Txhash)
@@ -400,6 +336,124 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 	}
 
 	return d, nil
+}
+
+func (d *data) parseDelegations(tx node.Tx) error {
+	if len(tx.ScResults) != 2 {
+		fmt.Println(tx.Txhash, len(tx.ScResults))
+		fmt.Println("parseDelegations len(tx.ScResults) != 2")
+		return nil
+	}
+	amount, err := decimal.NewFromString(tx.Value)
+	if err != nil {
+		return fmt.Errorf("decimal.NewFromString: %s", err.Error())
+	}
+	d.delegations = append(d.delegations, dmodels.Delegation{
+		Delegator: tx.Sender,
+		TxHash:    tx.Txhash,
+		Validator: tx.Receiver,
+		Amount:    amount.Div(precisionDiv),
+		CreatedAt: time.Unix(tx.Timestamp, 0),
+	})
+	return nil
+}
+
+func (d *data) parseRewardClaims(tx node.Tx, nonce uint64) error {
+	if len(tx.ScResults) != 2 {
+		fmt.Println(tx.Txhash, len(tx.ScResults))
+		fmt.Println("parseRewardClaims len(tx.ScResults) != 2")
+		return nil
+	}
+	rewardData := tx.ScResults[1].Value
+	if len(tx.ScResults[0].Data) == 0 {
+		rewardData = tx.ScResults[0].Value
+	}
+	reward, err := decimal.NewFromString(rewardData)
+	if err != nil {
+		return fmt.Errorf("[tx: %s] decimal.NewFromString: %s", tx.Txhash, err.Error())
+	}
+	d.rewards = append(d.rewards, dmodels.Reward{
+		HypeblockID:     nonce,
+		TxHash:          tx.Txhash,
+		ReceiverAddress: tx.Sender,
+		Amount:          reward.Div(precisionDiv),
+		CreatedAt:       time.Unix(tx.Timestamp, 0),
+	})
+	return nil
+}
+
+func (d *data) parseRewardDelegations(tx node.Tx, nonce uint64) error {
+	if len(tx.ScResults) != 2 {
+		return nil
+	}
+	amountData := tx.ScResults[0].Value
+	if len(tx.ScResults[1].Data) == 0 {
+		amountData = tx.ScResults[1].Value
+	}
+	a, err := decimal.NewFromString(amountData)
+	if err != nil {
+		return fmt.Errorf("decimal.NewFromString: %s", err.Error())
+	}
+	d.rewards = append(d.rewards, dmodels.Reward{
+		HypeblockID:     nonce,
+		TxHash:          tx.Txhash,
+		ReceiverAddress: tx.Sender,
+		Amount:          a.Div(precisionDiv),
+		CreatedAt:       time.Unix(tx.Timestamp, 0),
+	})
+	d.delegations = append(d.delegations, dmodels.Delegation{
+		Delegator: tx.Sender,
+		TxHash:    tx.Txhash,
+		Validator: tx.Receiver,
+		Amount:    a.Div(precisionDiv),
+		CreatedAt: time.Unix(tx.Timestamp, 0),
+	})
+	return nil
+}
+
+func (d *data) parseUndelegations(tx node.Tx, txType string) error {
+	amountData := strings.TrimPrefix(txType, "unDelegate@")
+	a, err := decimalFromHex(amountData)
+	if err != nil {
+		return fmt.Errorf("[tx: %s] decimalFromHex: %s", tx.Txhash, err.Error())
+	}
+	d.delegations = append(d.delegations, dmodels.Delegation{
+		Delegator: tx.Sender,
+		TxHash:    tx.Txhash,
+		Validator: tx.Receiver,
+		Amount:    a.Neg(),
+		CreatedAt: time.Unix(tx.Timestamp, 0),
+	})
+	return nil
+}
+
+func (d *data) parseStake(tx node.Tx, txType string) error {
+	amount, err := decimal.NewFromString(tx.Value)
+	if err != nil {
+		return fmt.Errorf("decimal.NewFromString: %s", err.Error())
+	}
+	d.stakes = append(d.stakes, dmodels.Stake{
+		TxHash:    tx.Txhash,
+		Validator: tx.Receiver,
+		Amount:    amount.Div(precisionDiv),
+		CreatedAt: time.Unix(tx.Timestamp, 0),
+	})
+	return nil
+}
+
+func (d *data) parseUnstake(tx node.Tx, txType string) error {
+	amountData := strings.TrimPrefix(txType, "unStake@")
+	a, err := decimalFromHex(amountData)
+	if err != nil {
+		return fmt.Errorf("decimalFromHex: %s", err.Error())
+	}
+	d.stakes = append(d.stakes, dmodels.Stake{
+		TxHash:    tx.Txhash,
+		Validator: tx.Receiver,
+		Amount:    a.Neg(),
+		CreatedAt: time.Unix(tx.Timestamp, 0),
+	})
+	return nil
 }
 
 func (p *Parser) saving() {
@@ -458,6 +512,9 @@ func (p *Parser) saving() {
 			singleData.transactions = append(singleData.transactions, item.transactions...)
 			singleData.scResults = append(singleData.scResults, item.scResults...)
 			singleData.accounts = append(singleData.accounts, item.accounts...)
+			singleData.delegations = append(singleData.delegations, item.delegations...)
+			singleData.stakes = append(singleData.stakes, item.stakes...)
+			singleData.rewards = append(singleData.rewards, item.rewards...)
 		}
 		p.wg.Add(1)
 		var err error
@@ -491,6 +548,31 @@ func (p *Parser) saving() {
 				break
 			}
 			log.Error("Parser: dao.CreateSCResults: %s", err.Error())
+			<-time.After(repeatDelay)
+		}
+		for {
+			err = p.dao.CreateDelegations(singleData.delegations)
+			if err == nil {
+				break
+			}
+			fmt.Println(singleData.delegations)
+			log.Error("Parser: dao.CreateDelegations: %s", err.Error())
+			<-time.After(repeatDelay)
+		}
+		for {
+			err = p.dao.CreateStakes(singleData.stakes)
+			if err == nil {
+				break
+			}
+			log.Error("Parser: dao.CreateStakes: %s", err.Error())
+			<-time.After(repeatDelay)
+		}
+		for {
+			err = p.dao.CreateRewards(singleData.rewards)
+			if err == nil {
+				break
+			}
+			log.Error("Parser: dao.CreateRewards: %s", err.Error())
 			<-time.After(repeatDelay)
 		}
 
@@ -557,4 +639,15 @@ func (p *Parser) saveNewAccounts(d data) {
 		log.Error("Parser: dao.CreateAccounts: %s", err.Error())
 		<-time.After(repeatDelay)
 	}
+}
+
+func decimalFromHex(hexStr string) (result decimal.Decimal, err error) {
+	d, err := hex.DecodeString(hexStr)
+	if err != nil {
+		fmt.Println(hexStr)
+
+		return result, fmt.Errorf("hex.DecodeString: %s", err.Error())
+	}
+	a := (&big.Int{}).SetBytes(d)
+	return decimal.NewFromBigInt(a, 0).Div(precisionDiv), nil
 }

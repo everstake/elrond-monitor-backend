@@ -104,5 +104,38 @@ create table accounts
     acc_created_at timestamp(0) not null
 );
 
+create table rewards
+(
+    rwd_tx_hash          varchar(64)     not null
+        constraint rewards_pk
+            primary key,
+    rwd_hyperblock_id    bigint          not null,
+    rwd_receiver_address varchar(64)     not null,
+    rwd_amount           numeric(36, 18) not null,
+    rwd_created_at       timestamp       not null
+);
 
+create index rewards_rwd_receiver_address_index
+    on rewards (rwd_receiver_address);
+
+create table delegations
+(
+    dlg_tx_hash    varchar(64)     not null
+        constraint delegations_pk
+            primary key,
+    dlg_delegator  varchar(64)     not null,
+    dlg_validator  varchar(64)     not null,
+    dlg_amount     numeric(36, 18) not null,
+    dlg_created_at timestamp       not null
+);
+
+create table stakes
+(
+    stk_tx_hash    varchar(64)     not null
+        constraint stakes_pk
+            primary key,
+    stk_validator  varchar(64)     not null,
+    stk_amount     numeric(36, 18) not null,
+    stk_created_at timestamp       not null
+);
 

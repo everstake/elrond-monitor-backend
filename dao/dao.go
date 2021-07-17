@@ -43,6 +43,13 @@ type (
 		// storage
 		GetStorageValue(key string) (value string, err error)
 		UpdateStorageValue(item dmodels.StorageItem) error
+
+		// staking
+		CreateDelegations(delegations []dmodels.Delegation) error
+		CreateStakes(stakes []dmodels.Stake) error
+
+		// rewards
+		CreateRewards(rewards []dmodels.Reward) error
 	}
 
 	DAO interface {

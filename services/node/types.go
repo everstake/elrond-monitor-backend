@@ -21,6 +21,7 @@ type (
 				Nonce uint64 `json:"nonce"`
 				Shard uint64 `json:"shard"`
 			} `json:"shardBlocks"`
+			Transactions []Tx `json:"transactions"`
 		} `json:"hyperblock"`
 	}
 
@@ -183,5 +184,4 @@ type (
 			ErdRoundsPerEpoch             int `json:"erd_rounds_per_epoch"`
 		} `json:"status"`
 	}
-
 )

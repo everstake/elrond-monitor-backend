@@ -146,7 +146,7 @@ func (api *API) GetNetworkStatus(shardID uint64) (status NetworkStatus, err erro
 }
 
 func (api *API) get(endpoint string, params map[string]string, result interface{}, wrapped bool) error {
-	<-time.After(time.Millisecond * 200) // todo make latency for tests
+	//<-time.After(time.Millisecond * 200) // todo make latency for tests
 
 	fullURL := fmt.Sprintf("%s%s", api.address, endpoint)
 	if len(params) != 0 {
