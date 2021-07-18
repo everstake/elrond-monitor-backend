@@ -113,22 +113,22 @@ type (
 		ReturnMessage  string `json:"returnMessage"`
 	}
 
-	TxDetails struct {
-		Hash      string          `json:"hash"`
-		GasLimit  uint64          `json:"gasLimit"`
-		GasUsed   uint64          `json:"gasUsed"`
-		Data      string          `json:"data"`
-		Value     decimal.Decimal `json:"value,string"`
-		ScResults []struct {
-			Receiver string          `json:"receiver"`
-			Data     string          `json:"data"`
-			Sender   string          `json:"sender"`
-			Value    decimal.Decimal `json:"value,string"`
-		} `json:"scResults"`
-		Timestamp int64  `json:"timestamp"`
-		Status    string `json:"status"`
-		Error     string `json:"error"`
-	}
+	//TxDetails struct {
+	//	Hash      string          `json:"hash"`
+	//	GasLimit  uint64          `json:"gasLimit"`
+	//	GasUsed   uint64          `json:"gasUsed"`
+	//	Data      string          `json:"data"`
+	//	Value     decimal.Decimal `json:"value,string"`
+	//	ScResults []struct {
+	//		Receiver string          `json:"receiver"`
+	//		Data     string          `json:"data"`
+	//		Sender   string          `json:"sender"`
+	//		Value    decimal.Decimal `json:"value,string"`
+	//	} `json:"scResults"`
+	//	Timestamp int64  `json:"timestamp"`
+	//	Status    string `json:"status"`
+	//	Error     string `json:"error"`
+	//}
 
 	Address struct {
 		Account struct {

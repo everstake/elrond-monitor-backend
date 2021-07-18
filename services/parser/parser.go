@@ -214,6 +214,11 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 			// todo some Tx doesn`t have scResults
 
 			for _, tx := range txs {
+				tx, err := p.node.GetTxByHash(tx.Txhash)
+				if err != nil {
+					return d, fmt.Errorf("node.GetTxByHash: %s", err.Error())
+				}
+
 				switch strings.ToLower(tx.Status) {
 				case dmodels.TxStatusPending:
 					return d, fmt.Errorf("found pending tx: %s", tx.Txhash)

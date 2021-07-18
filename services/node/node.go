@@ -40,7 +40,7 @@ type (
 	}
 
 	APIi interface {
-		GetTxByHash(hash string) (tx TxDetails, err error)
+		GetTxByHash(hash string) (tx Tx, err error)
 		GetTxsByMiniBlockHash(miniBlockHash string, offset, limit uint64) (txs []Tx, err error)
 		GetMiniBlock(hash string) (miniBlock MiniBlock, err error)
 		GetBlock(height uint64, shard uint64) (block Block, err error)
@@ -64,7 +64,7 @@ func NewAPI(apiAddress string) *API {
 	}
 }
 
-func (api *API) GetTxByHash(hash string) (tx TxDetails, err error) {
+func (api *API) GetTxByHash(hash string) (tx Tx, err error) {
 	endpoint := fmt.Sprintf(txInfoByHashEndpoint, hash)
 	err = api.get(endpoint, nil, &tx, false)
 	return tx, err
