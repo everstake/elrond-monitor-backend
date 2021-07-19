@@ -3,6 +3,7 @@ package node
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -10,6 +11,8 @@ import (
 )
 
 const (
+	Precision = 18
+
 	successfulCode = "successful"
 
 	txInfoByMiniBlockHashEndpoint = "/transactions"
@@ -25,7 +28,12 @@ const (
 	identitiesEndpoint            = "/identities"
 	economicsEndpoint             = "/economics"
 	networkStatusEndpoint         = "/network/status/%d"
+	accountEndpoint               = "/accounts/%s"
+	accountDelegationEndpoint     = "/accounts/%s/delegation-legacy"
+	validatorStatisticsEndpoint   = "/validator/statistics"
 )
+
+var precisionDiv = decimal.New(1, Precision)
 
 type (
 	API struct {
@@ -52,6 +60,10 @@ type (
 		GetIdentities() (identities []Identity, err error)
 		GetEconomics() (economics []Economics, err error)
 		GetNetworkStatus(shardID uint64) (status NetworkStatus, err error)
+		GetAccount(address string) (account Account, err error)
+		GetAccountDelegation(address string) (account AccountDelegation, err error)
+		GetValidatorStatistics() (statistics ValidatorStatistics, err error)
+		GetHeartbeatStatus() (status HeartbeatStatus, err error)
 	}
 )
 
@@ -145,6 +157,28 @@ func (api *API) GetNetworkStatus(shardID uint64) (status NetworkStatus, err erro
 	return status, err
 }
 
+func (api *API) GetAccount(address string) (account Account, err error) {
+	endpoint := fmt.Sprintf(accountEndpoint, address)
+	err = api.get(endpoint, nil, &account, false)
+	return account, err
+}
+
+func (api *API) GetAccountDelegation(address string) (account AccountDelegation, err error) {
+	endpoint := fmt.Sprintf(accountDelegationEndpoint, address)
+	err = api.get(endpoint, nil, &account, false)
+	return account, err
+}
+
+func (api *API) GetValidatorStatistics() (statistics ValidatorStatistics, err error) {
+	err = api.get(validatorStatisticsEndpoint, nil, &statistics, true)
+	return statistics, err
+}
+
+func (api *API) GetHeartbeatStatus() (status HeartbeatStatus, err error) {
+	err = api.get(validatorStatisticsEndpoint, nil, &status, true)
+	return status, err
+}
+
 func (api *API) get(endpoint string, params map[string]string, result interface{}, wrapped bool) error {
 	//<-time.After(time.Millisecond * 200) // todo make latency for tests
 
@@ -185,4 +219,8 @@ func (api *API) get(endpoint string, params map[string]string, result interface{
 		return fmt.Errorf("json.Unmarshal(result): %s", err.Error())
 	}
 	return nil
+}
+
+func ValueToEGLD(value decimal.Decimal) decimal.Decimal {
+	return value.Div(precisionDiv)
 }

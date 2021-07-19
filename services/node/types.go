@@ -2,6 +2,7 @@ package node
 
 import (
 	"github.com/shopspring/decimal"
+	"time"
 )
 
 type (
@@ -113,23 +114,6 @@ type (
 		ReturnMessage  string `json:"returnMessage"`
 	}
 
-	//TxDetails struct {
-	//	Hash      string          `json:"hash"`
-	//	GasLimit  uint64          `json:"gasLimit"`
-	//	GasUsed   uint64          `json:"gasUsed"`
-	//	Data      string          `json:"data"`
-	//	Value     decimal.Decimal `json:"value,string"`
-	//	ScResults []struct {
-	//		Receiver string          `json:"receiver"`
-	//		Data     string          `json:"data"`
-	//		Sender   string          `json:"sender"`
-	//		Value    decimal.Decimal `json:"value,string"`
-	//	} `json:"scResults"`
-	//	Timestamp int64  `json:"timestamp"`
-	//	Status    string `json:"status"`
-	//	Error     string `json:"error"`
-	//}
-
 	Address struct {
 		Account struct {
 			Address  string          `json:"address"`
@@ -183,5 +167,63 @@ type (
 			ErdRoundsPassedInCurrentEpoch int `json:"erd_rounds_passed_in_current_epoch"`
 			ErdRoundsPerEpoch             int `json:"erd_rounds_per_epoch"`
 		} `json:"status"`
+	}
+
+	Account struct {
+		Address  string          `json:"address"`
+		Nonce    uint64          `json:"nonce"`
+		Balance  decimal.Decimal `json:"balance"`
+		Code     string          `json:"code,omitempty"`
+		CodeHash string          `json:"code_hash,omitempty"`
+		RootHash string          `json:"root_hash,omitempty"`
+		TxCount  uint64          `json:"tx_count"`
+	}
+
+	AccountDelegation struct {
+		UserWithdrawOnlyStake    decimal.Decimal `json:"userWithdrawOnlyStake"`
+		UserWaitingStake         decimal.Decimal `json:"userWaitingStake"`
+		UserActiveStake          decimal.Decimal `json:"userActiveStake"`
+		UserUnstakedStake        decimal.Decimal `json:"userUnstakedStake"`
+		UserDeferredPaymentStake decimal.Decimal `json:"userDeferredPaymentStake"`
+		ClaimableRewards         decimal.Decimal `json:"claimableRewards"`
+	}
+
+	ValidatorStatistics struct {
+		Statistics map[string]struct {
+			TempRating                         float64 `json:"tempRating"`
+			NumLeaderSuccess                   int64   `json:"numLeaderSuccess"`
+			NumLeaderFailure                   int64   `json:"numLeaderFailure"`
+			NumValidatorSuccess                int64   `json:"numValidatorSuccess"`
+			NumValidatorFailure                int64   `json:"numValidatorFailure"`
+			NumValidatorIgnoredSignatures      int64   `json:"numValidatorIgnoredSignatures"`
+			Rating                             float64 `json:"rating"`
+			RatingModifier                     float64 `json:"ratingModifier"`
+			TotalNumLeaderSuccess              int64   `json:"totalNumLeaderSuccess"`
+			TotalNumLeaderFailure              int64   `json:"totalNumLeaderFailure"`
+			TotalNumValidatorSuccess           int64   `json:"totalNumValidatorSuccess"`
+			TotalNumValidatorFailure           int64   `json:"totalNumValidatorFailure"`
+			TotalNumValidatorIgnoredSignatures int64   `json:"totalNumValidatorIgnoredSignatures"`
+			ShardID                            int64   `json:"shardId"`
+			ValidatorStatus                    string  `json:"validatorStatus"`
+		} `json:"statistics"`
+	}
+
+	HeartbeatStatus struct {
+		Heartbeats []struct {
+			TimeStamp        time.Time `json:"timeStamp"`
+			PublicKey        string    `json:"publicKey"`
+			VersionNumber    string    `json:"versionNumber"`
+			NodeDisplayName  string    `json:"nodeDisplayName"`
+			Identity         string    `json:"identity"`
+			TotalUpTimeSec   uint64    `json:"totalUpTimeSec"`
+			TotalDownTimeSec uint64    `json:"totalDownTimeSec"`
+			MaxInactiveTime  string    `json:"maxInactiveTime"`
+			ReceivedShardID  uint64    `json:"receivedShardID"`
+			ComputedShardID  uint64    `json:"computedShardID"`
+			PeerType         string    `json:"peerType"`
+			IsActive         bool      `json:"isActive"`
+			Nonce            uint64    `json:"nonce"`
+			NumInstances     uint64    `json:"numInstances"`
+		} `json:"heartbeats"`
 	}
 )

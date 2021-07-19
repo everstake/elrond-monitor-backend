@@ -16,6 +16,7 @@ type (
 		GetBlocks(filter filters.Blocks) (items smodels.Pagination, err error)
 		GetAccounts(filter filters.Accounts) (items smodels.Pagination, err error)
 		GetMiniBlock(hash string) (block smodels.Miniblock, err error)
+		GetAccount(address string) (account smodels.Account, err error)
 	}
 
 	ServiceFacade struct {

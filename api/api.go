@@ -100,6 +100,7 @@ func (api *API) loadRoutes() {
 		{Path: "/blocks", Method: http.MethodGet, Func: api.GetBlocks},
 		{Path: "/block/{hash}", Method: http.MethodGet, Func: api.GetBlock},
 		{Path: "/accounts", Method: http.MethodGet, Func: api.GetAccounts},
+		{Path: "/account/{address}", Method: http.MethodGet, Func: api.GetAccount},
 		{Path: "/miniblock/{hash}", Method: http.MethodGet, Func: api.GetMiniBlock},
 	})
 

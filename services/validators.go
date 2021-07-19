@@ -1,5 +1,5 @@
 package services
 
-func (s *ServiceFacade) UpdateValidatorsRanking() {
+func (s *ServiceFacade) UpdateValidatorsList() {
 
 }

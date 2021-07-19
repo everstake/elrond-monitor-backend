@@ -25,7 +25,7 @@ const (
 	fetcherChBuffer     = 5000
 	saverChBuffer       = 5000
 	metaChainShardIndex = 4294967295
-	precision           = 18
+	msgOKBase64         = "QDZmNmI=" // @ok
 )
 
 var shardIndexes = map[uint64]ShardIndex{
@@ -34,8 +34,6 @@ var shardIndexes = map[uint64]ShardIndex{
 	2:                   2,
 	metaChainShardIndex: metaChainShardIndex,
 }
-
-var precisionDiv = decimal.New(1, precision)
 
 type (
 	Parser struct {
@@ -166,8 +164,8 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 
 	for _, block := range hyperBlocks {
 		d.blocks = append(d.blocks, dmodels.Block{
-			AccumulatedFees: decimal.New(block.Block.AccumulatedFees, 0).Div(precisionDiv),
-			DeveloperFees:   decimal.New(block.Block.DeveloperFees, 0).Div(precisionDiv),
+			AccumulatedFees: node.ValueToEGLD(decimal.NewFromInt(block.Block.AccumulatedFees)),
+			DeveloperFees:   node.ValueToEGLD(decimal.NewFromInt(block.Block.DeveloperFees)),
 			Hash:            block.Block.Hash,
 			Nonce:           block.Block.Nonce,
 			Round:           block.Block.Round,
@@ -211,9 +209,9 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 				CreatedAt:         time.Unix(miniBlock.Timestamp, 0),
 			})
 
-			// todo some Tx doesn`t have scResults
-
 			for _, tx := range txs {
+
+				// todo. get tx, because some tx from miniblock doesn`t have SCResults
 				tx, err := p.node.GetTxByHash(tx.Txhash)
 				if err != nil {
 					return d, fmt.Errorf("node.GetTxByHash: %s", err.Error())
@@ -236,8 +234,8 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 					Hash:          tx.Txhash,
 					Status:        tx.Status,
 					MiniBlockHash: tx.MiniBlockHash,
-					Value:         amount.Div(precisionDiv),
-					Fee:           decimal.New(tx.Fee, 0).Div(precisionDiv),
+					Value:         node.ValueToEGLD(amount),
+					Fee:           node.ValueToEGLD(decimal.NewFromInt(tx.Fee)),
 					Sender:        tx.Sender,
 					SenderShard:   tx.SenderShard,
 					Receiver:      tx.Receiver,
@@ -287,8 +285,10 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 				if tx.Status == dmodels.TxStatusSuccess {
 					txType := string(decodedBytes)
 					switch txType {
+					case "withdraw":
+						// todo claim undelegated value
 					case "stake":
-						err = d.parseStake(tx, txType)
+						err = d.parseStake(tx)
 						if err != nil {
 							return d, fmt.Errorf("parseStake: %s", err.Error())
 						}
@@ -344,9 +344,8 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 }
 
 func (d *data) parseDelegations(tx node.Tx) error {
-	if len(tx.ScResults) != 2 {
-		fmt.Println(tx.Txhash, len(tx.ScResults))
-		fmt.Println("parseDelegations len(tx.ScResults) != 2")
+	if !checkSCResults(tx.ScResults, 2) {
+		fmt.Printf("parseDelegations: checkSCResults: false (tx: %s) \n", tx.Txhash)
 		return nil
 	}
 	amount, err := decimal.NewFromString(tx.Value)
@@ -357,7 +356,7 @@ func (d *data) parseDelegations(tx node.Tx) error {
 		Delegator: tx.Sender,
 		TxHash:    tx.Txhash,
 		Validator: tx.Receiver,
-		Amount:    amount.Div(precisionDiv),
+		Amount:    node.ValueToEGLD(amount),
 		CreatedAt: time.Unix(tx.Timestamp, 0),
 	})
 	return nil
@@ -365,15 +364,17 @@ func (d *data) parseDelegations(tx node.Tx) error {
 
 func (d *data) parseRewardClaims(tx node.Tx, nonce uint64) error {
 	if len(tx.ScResults) != 2 {
-		fmt.Println(tx.Txhash, len(tx.ScResults))
-		fmt.Println("parseRewardClaims len(tx.ScResults) != 2")
+		fmt.Printf("parseRewardClaims len(tx.ScResults) != 2 (tx: %s) \n", tx.Txhash)
 		return nil
 	}
-	rewardData := tx.ScResults[1].Value
-	if len(tx.ScResults[0].Data) == 0 {
-		rewardData = tx.ScResults[0].Value
+	rewardsIndex := 0
+	if tx.ScResults[0].Data == msgOKBase64 {
+		rewardsIndex = 1
+	} else if tx.ScResults[1].Data != msgOKBase64 {
+		fmt.Printf("parseRewardClaims can`t find OK msg (tx: %s) \n", tx.Txhash)
+		return nil
 	}
-	reward, err := decimal.NewFromString(rewardData)
+	reward, err := decimal.NewFromString(tx.ScResults[rewardsIndex].Value)
 	if err != nil {
 		return fmt.Errorf("[tx: %s] decimal.NewFromString: %s", tx.Txhash, err.Error())
 	}
@@ -381,14 +382,15 @@ func (d *data) parseRewardClaims(tx node.Tx, nonce uint64) error {
 		HypeblockID:     nonce,
 		TxHash:          tx.Txhash,
 		ReceiverAddress: tx.Sender,
-		Amount:          reward.Div(precisionDiv),
+		Amount:          node.ValueToEGLD(reward),
 		CreatedAt:       time.Unix(tx.Timestamp, 0),
 	})
 	return nil
 }
 
 func (d *data) parseRewardDelegations(tx node.Tx, nonce uint64) error {
-	if len(tx.ScResults) != 2 {
+	if !checkSCResults(tx.ScResults, 2) {
+		fmt.Printf("parseRewardDelegations: checkSCResults: false (tx: %s) \n", tx.Txhash)
 		return nil
 	}
 	amountData := tx.ScResults[0].Value
@@ -403,20 +405,24 @@ func (d *data) parseRewardDelegations(tx node.Tx, nonce uint64) error {
 		HypeblockID:     nonce,
 		TxHash:          tx.Txhash,
 		ReceiverAddress: tx.Sender,
-		Amount:          a.Div(precisionDiv),
+		Amount:          node.ValueToEGLD(a),
 		CreatedAt:       time.Unix(tx.Timestamp, 0),
 	})
 	d.delegations = append(d.delegations, dmodels.Delegation{
 		Delegator: tx.Sender,
 		TxHash:    tx.Txhash,
 		Validator: tx.Receiver,
-		Amount:    a.Div(precisionDiv),
+		Amount:    node.ValueToEGLD(a),
 		CreatedAt: time.Unix(tx.Timestamp, 0),
 	})
 	return nil
 }
 
 func (d *data) parseUndelegations(tx node.Tx, txType string) error {
+	if !checkSCResults(tx.ScResults, 2) {
+		fmt.Printf("parseUndelegations: checkSCResults: false (tx: %s) \n", tx.Txhash)
+		return nil
+	}
 	amountData := strings.TrimPrefix(txType, "unDelegate@")
 	a, err := decimalFromHex(amountData)
 	if err != nil {
@@ -432,7 +438,11 @@ func (d *data) parseUndelegations(tx node.Tx, txType string) error {
 	return nil
 }
 
-func (d *data) parseStake(tx node.Tx, txType string) error {
+func (d *data) parseStake(tx node.Tx) error {
+	if !checkSCResults(tx.ScResults, 1) {
+		fmt.Printf("parseStake: checkSCResults: false (tx: %s) \n", tx.Txhash)
+		return nil
+	}
 	amount, err := decimal.NewFromString(tx.Value)
 	if err != nil {
 		return fmt.Errorf("decimal.NewFromString: %s", err.Error())
@@ -440,13 +450,17 @@ func (d *data) parseStake(tx node.Tx, txType string) error {
 	d.stakes = append(d.stakes, dmodels.Stake{
 		TxHash:    tx.Txhash,
 		Validator: tx.Receiver,
-		Amount:    amount.Div(precisionDiv),
+		Amount:    node.ValueToEGLD(amount),
 		CreatedAt: time.Unix(tx.Timestamp, 0),
 	})
 	return nil
 }
 
 func (d *data) parseUnstake(tx node.Tx, txType string) error {
+	if !checkSCResults(tx.ScResults, 1) {
+		fmt.Printf("parseUnstake: checkSCResults: false (tx: %s) \n", tx.Txhash)
+		return nil
+	}
 	amountData := strings.TrimPrefix(txType, "unStake@")
 	a, err := decimalFromHex(amountData)
 	if err != nil {
@@ -654,5 +668,22 @@ func decimalFromHex(hexStr string) (result decimal.Decimal, err error) {
 		return result, fmt.Errorf("hex.DecodeString: %s", err.Error())
 	}
 	a := (&big.Int{}).SetBytes(d)
-	return decimal.NewFromBigInt(a, 0).Div(precisionDiv), nil
+	return node.ValueToEGLD(decimal.NewFromBigInt(a, 0)), nil
+}
+
+func checkSCResults(results []node.ScResult, expectedLen int) bool {
+	if len(results) != expectedLen {
+		return false
+	}
+	switch expectedLen {
+	case 1:
+		return results[0].Data == msgOKBase64
+	case 2:
+		okIndex := 0
+		if len(results[0].Data) == 0 {
+			okIndex = 1
+		}
+		return results[okIndex].Data == msgOKBase64
+	}
+	return false
 }

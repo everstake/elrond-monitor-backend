@@ -1,15 +1,14 @@
 package smodels
 
+import "github.com/shopspring/decimal"
+
 type Account struct {
-	Address string `json:"address,omitempty"`
-
-	Balance float64 `json:"balance,omitempty"`
-
-	Delegated float64 `json:"delegated,omitempty"`
-
-	Undelegated float64 `json:"undelegated,omitempty"`
-
-	RewardsClaimed float64 `json:"rewards_claimed,omitempty"`
-
-	StakingProvider float64 `json:"staking_provider,omitempty"`
+	Address          string          `json:"address"`
+	Balance          decimal.Decimal `json:"balance"`
+	Nonce            uint64          `json:"nonce"`
+	Delegated        decimal.Decimal `json:"delegated"`
+	Undelegated      decimal.Decimal `json:"undelegated"`
+	RewardsClaimed   decimal.Decimal `json:"rewards_claimed"`
+	ClaimableRewards decimal.Decimal `json:"claimable_rewards"`
+	StakingProvider  string          `json:"staking_provider"`
 }

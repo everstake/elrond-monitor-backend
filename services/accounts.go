@@ -3,7 +3,9 @@ package services
 import (
 	"fmt"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
+	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/everstake/elrond-monitor-backend/smodels"
+	"github.com/shopspring/decimal"
 )
 
 func (s *ServiceFacade) GetAccounts(filter filters.Accounts) (items smodels.Pagination, err error) {
@@ -16,11 +18,11 @@ func (s *ServiceFacade) GetAccounts(filter filters.Accounts) (items smodels.Pagi
 		accounts[i] = smodels.Account{
 			Address: a.Address,
 			// todo
-			Balance:         0,
-			Delegated:       0,
-			Undelegated:     0,
-			RewardsClaimed:  0,
-			StakingProvider: 0,
+			Balance:         decimal.Decimal{},
+			Delegated:       decimal.Decimal{},
+			Undelegated:     decimal.Decimal{},
+			RewardsClaimed:  decimal.Decimal{},
+			StakingProvider: "",
 		}
 	}
 	total, err := s.dao.GetAccountsTotal(filter)
@@ -30,5 +32,27 @@ func (s *ServiceFacade) GetAccounts(filter filters.Accounts) (items smodels.Pagi
 	return smodels.Pagination{
 		Items: accounts,
 		Count: total,
+	}, nil
+}
+
+func (s *ServiceFacade) GetAccount(address string) (account smodels.Account, err error) {
+	acc, err := s.node.GetAccount(address)
+	if err != nil {
+		return account, fmt.Errorf("node.GetAccount: %s", err.Error())
+	}
+	delegation, err := s.node.GetAccountDelegation(address)
+	if err != nil {
+		return account, fmt.Errorf("node.GetAccountDelegation: %s", err.Error())
+	}
+	return smodels.Account{
+		Address:          address,
+		Balance:          node.ValueToEGLD(acc.Balance),
+		Nonce:            acc.Nonce,
+		Delegated:        node.ValueToEGLD(delegation.UserActiveStake),
+		Undelegated:      node.ValueToEGLD(delegation.UserUnstakedStake),
+		ClaimableRewards: node.ValueToEGLD(delegation.ClaimableRewards),
+		// todo
+		RewardsClaimed:  decimal.Decimal{},
+		StakingProvider: "",
 	}, nil
 }
