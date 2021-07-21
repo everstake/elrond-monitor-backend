@@ -17,6 +17,8 @@ type (
 		GetAccounts(filter filters.Accounts) (items smodels.Pagination, err error)
 		GetMiniBlock(hash string) (block smodels.Miniblock, err error)
 		GetAccount(address string) (account smodels.Account, err error)
+		UpdateNodes() error
+		GetNodes(filter filters.Nodes) (nodes []node.HeartbeatStatus, err error)
 	}
 
 	ServiceFacade struct {

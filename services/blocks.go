@@ -29,18 +29,18 @@ func (s *ServiceFacade) GetBlock(hash string) (block smodels.Block, err error) {
 		}
 		miniBlocksHashes[i] = b.Hash
 	}
-	extraData, err := s.node.GetExtraDataBlock(dBlock.Hash)
-	if err != nil {
-		return block, fmt.Errorf("node.GetExtraDataBlock: %s", err.Error())
-	}
+	//extraData, err := s.node.GetExtraDataBlock(dBlock.Hash)
+	//if err != nil {
+	//	return block, fmt.Errorf("node.GetExtraDataBlock: %s", err.Error())
+	//}
 	block = smodels.Block{
 		Hash:       dBlock.Hash,
 		Nonce:      dBlock.Nonce,
 		Shard:      dBlock.Shard,
 		Epoch:      dBlock.Epoch,
 		TxCount:    dBlock.NumTxs,
-		Size:       extraData.Size,
-		Proposer:   extraData.Proposer,
+		//Size:       extraData.Size,
+		//Proposer:   extraData.Proposer,
 		Miniblocks: miniBlocksHashes,
 		Timestamp:  smodels.NewTime(dBlock.CreatedAt),
 	}

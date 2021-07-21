@@ -80,7 +80,12 @@ func (db Postgres) CreateMiniBlocks(blocks []dmodels.MiniBlock) error {
 			b.CreatedAt,
 		)
 	}
-	q = q.Suffix("ON CONFLICT (mlk_hash) DO NOTHING")
+	conflictCondition := `
+		ON CONFLICT (mlk_hash) DO UPDATE SET 
+			mlk_receiver_block_hash = CASE WHEN miniblocks.mlk_receiver_block_hash = '' THEN EXCLUDED.mlk_receiver_block_hash ELSE miniblocks.mlk_receiver_block_hash END,
+			mlk_sender_block_hash = CASE WHEN miniblocks.mlk_sender_block_hash = '' THEN EXCLUDED.mlk_sender_block_hash ELSE miniblocks.mlk_sender_block_hash END
+	`
+	q = q.Suffix(conflictCondition)
 	_, err := db.insert(q)
 	return err
 }

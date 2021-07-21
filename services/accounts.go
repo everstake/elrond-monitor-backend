@@ -36,22 +36,21 @@ func (s *ServiceFacade) GetAccounts(filter filters.Accounts) (items smodels.Pagi
 }
 
 func (s *ServiceFacade) GetAccount(address string) (account smodels.Account, err error) {
-	acc, err := s.node.GetAccount(address)
+	acc, err := s.node.GetAddress(address)
 	if err != nil {
-		return account, fmt.Errorf("node.GetAccount: %s", err.Error())
+		return account, fmt.Errorf("node.GetAddress: %s", err.Error())
 	}
-	delegation, err := s.node.GetAccountDelegation(address)
-	if err != nil {
-		return account, fmt.Errorf("node.GetAccountDelegation: %s", err.Error())
-	}
+	//delegation, err := s.node.GetAccountDelegation(address)
+	//if err != nil {
+	//	return account, fmt.Errorf("node.GetAccountDelegation: %s", err.Error())
+	//}
 	return smodels.Account{
 		Address:          address,
 		Balance:          node.ValueToEGLD(acc.Balance),
 		Nonce:            acc.Nonce,
-		Delegated:        node.ValueToEGLD(delegation.UserActiveStake),
-		Undelegated:      node.ValueToEGLD(delegation.UserUnstakedStake),
-		ClaimableRewards: node.ValueToEGLD(delegation.ClaimableRewards),
-		// todo
+		//Delegated:        node.ValueToEGLD(delegation.UserActiveStake),
+		//Undelegated:      node.ValueToEGLD(delegation.UserUnstakedStake),
+		//ClaimableRewards: node.ValueToEGLD(delegation.ClaimableRewards),
 		RewardsClaimed:  decimal.Decimal{},
 		StakingProvider: "",
 	}, nil

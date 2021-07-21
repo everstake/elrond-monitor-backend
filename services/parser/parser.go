@@ -20,20 +20,12 @@ import (
 )
 
 const (
-	repeatDelay         = time.Second * 5
-	parserTitle         = "elrond"
-	fetcherChBuffer     = 5000
-	saverChBuffer       = 5000
-	metaChainShardIndex = 4294967295
-	msgOKBase64         = "QDZmNmI=" // @ok
+	repeatDelay     = time.Second * 5
+	parserTitle     = "elrond"
+	fetcherChBuffer = 5000
+	saverChBuffer   = 5000
+	msgOKBase64     = "QDZmNmI=" // @ok
 )
-
-var shardIndexes = map[uint64]ShardIndex{
-	0:                   0,
-	1:                   1,
-	2:                   2,
-	metaChainShardIndex: metaChainShardIndex,
-}
 
 type (
 	Parser struct {
@@ -87,11 +79,12 @@ func (p *Parser) Run() error {
 
 	go p.saving()
 	for {
-		latestBlock, err := p.node.GetMaxHeight(metaChainShardIndex)
+		networkStatus, err := p.node.GetNetworkStatus(node.MetaChainShardIndex)
 		if err != nil {
 			log.Error("Parser: node.GetMaxHeight: %s", err.Error())
 			continue
 		}
+		latestBlock := uint64(networkStatus.ErdNonce)
 		if model.Height >= latestBlock {
 			<-time.After(time.Second)
 			continue
@@ -146,80 +139,67 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 		return d, fmt.Errorf("node.GetHyperBlock: %s", err.Error())
 	}
 
-	hyperBlocks := make([]node.Block, 0, len(shardIndexes))
-	metaChainBlock, err := p.node.GetBlockByHash(hyperBlock.HyperBlock.Hash, metaChainShardIndex)
+	hyperBlocks := make([]node.Block, 0)
+	metaChainBlock, err := p.node.GetBlockByHash(hyperBlock.Hash, node.MetaChainShardIndex)
 	if err != nil {
-		return d, fmt.Errorf("api.GetBlockByHash: %s", err.Error())
+		return d, fmt.Errorf("api.GetBlockByHash(%s): %s", hyperBlock.Hash, err.Error())
 	}
 	hyperBlocks = append(hyperBlocks, metaChainBlock)
-	for _, ShardBlockInfo := range hyperBlock.HyperBlock.Shardblocks {
+	for _, ShardBlockInfo := range hyperBlock.Shardblocks {
 		block, err := p.node.GetBlockByHash(ShardBlockInfo.Hash, ShardBlockInfo.Shard)
 		if err != nil {
-			return d, fmt.Errorf("api.GetBlockByHash: %s", err.Error())
+			return d, fmt.Errorf("api.GetBlockByHash(%s): %s", ShardBlockInfo.Hash, err.Error())
 		}
 		hyperBlocks = append(hyperBlocks, block)
 	}
 
-	miniblocksRemain := make(map[string]interface{})
-
 	for _, block := range hyperBlocks {
+		t := time.Unix(block.Timestamp, 0)
 		d.blocks = append(d.blocks, dmodels.Block{
-			AccumulatedFees: node.ValueToEGLD(decimal.NewFromInt(block.Block.AccumulatedFees)),
-			DeveloperFees:   node.ValueToEGLD(decimal.NewFromInt(block.Block.DeveloperFees)),
-			Hash:            block.Block.Hash,
-			Nonce:           block.Block.Nonce,
-			Round:           block.Block.Round,
-			Shard:           block.Block.Shard,
-			NumTxs:          block.Block.NumTxs,
-			Epoch:           block.Block.Epoch,
-			Status:          block.Block.Status,
-			PrevBlockHash:   block.Block.PrevBlockHash,
-			CreatedAt:       time.Unix(block.Block.Timestamp, 0),
+			AccumulatedFees: node.ValueToEGLD(decimal.NewFromInt(block.AccumulatedFees)),
+			DeveloperFees:   node.ValueToEGLD(decimal.NewFromInt(block.DeveloperFees)),
+			Hash:            block.Hash,
+			Nonce:           block.Nonce,
+			Round:           block.Round,
+			Shard:           block.Shard,
+			NumTxs:          block.NumTxs,
+			Epoch:           block.Epoch,
+			Status:          block.Status,
+			PrevBlockHash:   block.PrevBlockHash,
+			CreatedAt:       t,
 		})
 
-		for _, miniBlockInfo := range block.Block.Miniblocks {
-			// ignore same miniblocks
-			if _, ok := miniblocksRemain[miniBlockInfo.Hash]; ok {
-				continue
+		for _, miniBlock := range block.Miniblocks {
+			receiverBlockHash := block.Hash
+			senderBlockHash := ""
+			if block.Shard == miniBlock.SourceShard {
+				receiverBlockHash = ""
+				senderBlockHash = block.Hash
 			}
-			miniblocksRemain[miniBlockInfo.Hash] = nil
-
-			miniBlock, err := p.node.GetMiniBlock(miniBlockInfo.Hash)
-			if err != nil {
-				return d, fmt.Errorf("node.GetBlockByHash: %s", err.Error())
-			}
-
-			txs, err := p.node.GetTxsByMiniBlockHash(miniBlock.MiniBlockHash, 0, 1000)
-			if err != nil {
-				return d, fmt.Errorf("node.GetTxsByMiniBlockHash: %s", err.Error())
-			}
-
-			// check number of txs from mini block
-			if len(txs) == 1000 {
-				return d, fmt.Errorf("the maximum number of transactions has been reached")
+			if miniBlock.SourceShard == miniBlock.DestinationShard {
+				receiverBlockHash = block.Hash
+				senderBlockHash = block.Hash
 			}
 
 			d.miniBlocks = append(d.miniBlocks, dmodels.MiniBlock{
-				Hash:              miniBlock.MiniBlockHash,
-				ReceiverBlockHash: miniBlock.ReceiverBlockHash,
-				ReceiverShard:     miniBlock.ReceiverShard,
-				SenderBlockHash:   miniBlock.SenderBlockHash,
-				SenderShard:       miniBlock.SenderShard,
+				Hash:              miniBlock.Hash,
+				ReceiverBlockHash: receiverBlockHash,
+				ReceiverShard:     miniBlock.DestinationShard,
+				SenderBlockHash:   senderBlockHash,
+				SenderShard:       miniBlock.SourceShard,
 				Type:              miniBlock.Type,
-				CreatedAt:         time.Unix(miniBlock.Timestamp, 0),
+				CreatedAt:         t,
 			})
 
-			for _, tx := range txs {
-
-				// todo. get tx, because some tx from miniblock doesn`t have SCResults
-				tx, err := p.node.GetTxByHash(tx.Txhash)
+			for _, mbTx := range miniBlock.Transactions {
+				tx, err := p.node.GetTransaction(mbTx.Hash)
 				if err != nil {
-					return d, fmt.Errorf("node.GetTxByHash: %s", err.Error())
+					return d, fmt.Errorf("node.GetTransaction(%s): %s", mbTx.Hash, err.Error())
 				}
 
 				switch strings.ToLower(tx.Status) {
 				case dmodels.TxStatusPending:
-					return d, fmt.Errorf("found pending tx: %s", tx.Txhash)
+					return d, fmt.Errorf("found pending tx: %s", mbTx.Hash)
 				case dmodels.TxStatusSuccess, dmodels.TxStatusFail, dmodels.TxStatusInvalid:
 				default:
 					return d, fmt.Errorf("unknown tx status: %s", tx.Status)
@@ -231,34 +211,29 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 				}
 
 				d.transactions = append(d.transactions, dmodels.Transaction{
-					Hash:          tx.Txhash,
+					Hash:          mbTx.Hash,
 					Status:        tx.Status,
-					MiniBlockHash: tx.MiniBlockHash,
+					MiniBlockHash: tx.MiniblockHash,
 					Value:         node.ValueToEGLD(amount),
-					Fee:           node.ValueToEGLD(decimal.NewFromInt(tx.Fee)),
+					Fee:           decimal.Zero, // todo
 					Sender:        tx.Sender,
-					SenderShard:   tx.SenderShard,
+					SenderShard:   tx.SourceShard,
 					Receiver:      tx.Receiver,
-					ReceiverShard: tx.ReceiverShard,
+					ReceiverShard: tx.DestinationShard,
 					GasPrice:      tx.GasPrice,
-					GasUsed:       tx.GasUsed,
+					GasUsed:       0, // todo
 					Nonce:         tx.Nonce,
 					Data:          tx.Data,
-					CreatedAt:     time.Unix(tx.Timestamp, 0),
+					CreatedAt:     t,
 				})
 
-				for _, r := range tx.ScResults {
-					v, err := decimal.NewFromString(r.Value)
-					if err != nil {
-						return d, fmt.Errorf("decimal.NewFromString: %s", err.Error())
-					}
-
+				for _, r := range tx.SmartContractResults {
 					d.scResults = append(d.scResults, dmodels.SCResult{
 						Hash:    r.Hash,
-						TxHash:  tx.Txhash,
+						TxHash:  mbTx.Hash,
 						From:    r.Sender,
 						To:      r.Receiver,
-						Value:   v,
+						Value:   r.Value,
 						Data:    r.Data,
 						Message: r.ReturnMessage,
 					})
@@ -288,50 +263,50 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 					case "withdraw":
 						// todo claim undelegated value
 					case "stake":
-						err = d.parseStake(tx)
+						err = d.parseStake(tx, mbTx.Hash, t)
 						if err != nil {
 							return d, fmt.Errorf("parseStake: %s", err.Error())
 						}
 					case "reDelegateRewards": // create delegation + claimRewards
-						err = d.parseRewardDelegations(tx, nonce)
+						err = d.parseRewardDelegations(tx, mbTx.Hash, nonce, t)
 						if err != nil {
 							return d, fmt.Errorf("parseRewardDelegations: %s", err.Error())
 						}
 					case "reStakeRewards": // create stake + claimRewards (check existence of reStakeRewards tx)
-						fmt.Println(txType, tx.Txhash)
+						fmt.Println(txType, mbTx.Hash)
 					case "delegate":
-						err = d.parseDelegations(tx)
+						err = d.parseDelegations(tx, mbTx.Hash, t)
 						if err != nil {
 							return d, fmt.Errorf("parseDelegations: %s", err.Error())
 						}
 					case "claimRewards":
-						err = d.parseRewardClaims(tx, nonce)
+						err = d.parseRewardClaims(tx, mbTx.Hash, nonce, t)
 						if err != nil {
 							return d, fmt.Errorf("parseRewardClaims: %s", err.Error())
 						}
 					case "unBond":
-						fmt.Println(txType, tx.Txhash)
+						fmt.Println(txType, mbTx.Hash)
 					default:
 						if strings.Contains(txType, "unBond") {
-							fmt.Println(txType, 2, tx.Txhash)
+							fmt.Println(txType, 2, mbTx.Hash)
 						}
 						if strings.Contains(txType, "relayedTx") {
-							//fmt.Println(txType, tx.Txhash)
+							//fmt.Println(txType, mbTx.Hash)
 						}
 						if strings.Contains(txType, "unDelegate") {
-							err = d.parseUndelegations(tx, txType)
+							err = d.parseUndelegations(tx, mbTx.Hash, txType, t)
 							if err != nil {
 								return d, fmt.Errorf("parseUndelegations: %s", err.Error())
 							}
 						}
 						if strings.Contains(txType, "unStake") {
-							err = d.parseUnstake(tx, txType)
+							err = d.parseUnstake(tx, mbTx.Hash, txType, t)
 							if err != nil {
 								return d, fmt.Errorf("parseUnstake: %s", err.Error())
 							}
 						}
 						if strings.Contains(txType, "reStakeRewards") { // check existence of reStakeRewards tx
-							fmt.Println(txType, tx.Txhash)
+							fmt.Println(txType, mbTx.Hash)
 						}
 					}
 				}
@@ -343,9 +318,9 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 	return d, nil
 }
 
-func (d *data) parseDelegations(tx node.Tx) error {
-	if !checkSCResults(tx.ScResults, 2) {
-		fmt.Printf("parseDelegations: checkSCResults: false (tx: %s) \n", tx.Txhash)
+func (d *data) parseDelegations(tx node.Tx, txHash string, t time.Time) error {
+	if !checkSCResults(tx.SmartContractResults, 2) {
+		fmt.Printf("parseDelegations: checkSCResults: false (tx: %s) \n", txHash)
 		return nil
 	}
 	amount, err := decimal.NewFromString(tx.Value)
@@ -354,93 +329,85 @@ func (d *data) parseDelegations(tx node.Tx) error {
 	}
 	d.delegations = append(d.delegations, dmodels.Delegation{
 		Delegator: tx.Sender,
-		TxHash:    tx.Txhash,
+		TxHash:    txHash,
 		Validator: tx.Receiver,
 		Amount:    node.ValueToEGLD(amount),
-		CreatedAt: time.Unix(tx.Timestamp, 0),
+		CreatedAt: t,
 	})
 	return nil
 }
 
-func (d *data) parseRewardClaims(tx node.Tx, nonce uint64) error {
-	if len(tx.ScResults) != 2 {
-		fmt.Printf("parseRewardClaims len(tx.ScResults) != 2 (tx: %s) \n", tx.Txhash)
+func (d *data) parseRewardClaims(tx node.Tx, txHash string, nonce uint64, t time.Time) error {
+	if len(tx.SmartContractResults) != 2 {
+		fmt.Printf("parseRewardClaims len(tx.ScResults) != 2 (tx: %s) \n", txHash)
 		return nil
 	}
 	rewardsIndex := 0
-	if tx.ScResults[0].Data == msgOKBase64 {
+	if tx.SmartContractResults[0].Data == msgOKBase64 {
 		rewardsIndex = 1
-	} else if tx.ScResults[1].Data != msgOKBase64 {
-		fmt.Printf("parseRewardClaims can`t find OK msg (tx: %s) \n", tx.Txhash)
+	} else if tx.SmartContractResults[1].Data != msgOKBase64 {
+		fmt.Printf("parseRewardClaims can`t find OK msg (tx: %s) \n", txHash)
 		return nil
-	}
-	reward, err := decimal.NewFromString(tx.ScResults[rewardsIndex].Value)
-	if err != nil {
-		return fmt.Errorf("[tx: %s] decimal.NewFromString: %s", tx.Txhash, err.Error())
 	}
 	d.rewards = append(d.rewards, dmodels.Reward{
 		HypeblockID:     nonce,
-		TxHash:          tx.Txhash,
+		TxHash:          txHash,
 		ReceiverAddress: tx.Sender,
-		Amount:          node.ValueToEGLD(reward),
-		CreatedAt:       time.Unix(tx.Timestamp, 0),
+		Amount:          node.ValueToEGLD(tx.SmartContractResults[rewardsIndex].Value),
+		CreatedAt:       t,
 	})
 	return nil
 }
 
-func (d *data) parseRewardDelegations(tx node.Tx, nonce uint64) error {
-	if !checkSCResults(tx.ScResults, 2) {
-		fmt.Printf("parseRewardDelegations: checkSCResults: false (tx: %s) \n", tx.Txhash)
+func (d *data) parseRewardDelegations(tx node.Tx, txHash string, nonce uint64, t time.Time) error {
+	if !checkSCResults(tx.SmartContractResults, 2) {
+		fmt.Printf("parseRewardDelegations: checkSCResults: false (tx: %s) \n", txHash)
 		return nil
 	}
-	amountData := tx.ScResults[0].Value
-	if len(tx.ScResults[1].Data) == 0 {
-		amountData = tx.ScResults[1].Value
-	}
-	a, err := decimal.NewFromString(amountData)
-	if err != nil {
-		return fmt.Errorf("decimal.NewFromString: %s", err.Error())
+	amount := tx.SmartContractResults[0].Value
+	if len(tx.SmartContractResults[1].Data) == 0 {
+		amount = tx.SmartContractResults[1].Value
 	}
 	d.rewards = append(d.rewards, dmodels.Reward{
 		HypeblockID:     nonce,
-		TxHash:          tx.Txhash,
+		TxHash:          txHash,
 		ReceiverAddress: tx.Sender,
-		Amount:          node.ValueToEGLD(a),
-		CreatedAt:       time.Unix(tx.Timestamp, 0),
+		Amount:          node.ValueToEGLD(amount),
+		CreatedAt:       t,
 	})
 	d.delegations = append(d.delegations, dmodels.Delegation{
 		Delegator: tx.Sender,
-		TxHash:    tx.Txhash,
+		TxHash:    txHash,
 		Validator: tx.Receiver,
-		Amount:    node.ValueToEGLD(a),
-		CreatedAt: time.Unix(tx.Timestamp, 0),
+		Amount:    node.ValueToEGLD(amount),
+		CreatedAt: t,
 	})
 	return nil
 }
 
-func (d *data) parseUndelegations(tx node.Tx, txType string) error {
-	if !checkSCResults(tx.ScResults, 2) {
-		fmt.Printf("parseUndelegations: checkSCResults: false (tx: %s) \n", tx.Txhash)
+func (d *data) parseUndelegations(tx node.Tx, txHash string, txType string, t time.Time) error {
+	if !checkSCResults(tx.SmartContractResults, 2) {
+		fmt.Printf("parseUndelegations: checkSCResults: false (tx: %s) \n", txHash)
 		return nil
 	}
 	amountData := strings.TrimPrefix(txType, "unDelegate@")
 	a, err := decimalFromHex(amountData)
 	if err != nil {
-		return fmt.Errorf("[tx: %s] decimalFromHex: %s", tx.Txhash, err.Error())
+		return fmt.Errorf("[tx: %s] decimalFromHex: %s", txHash, err.Error())
 	}
 	d.delegations = append(d.delegations, dmodels.Delegation{
 		Delegator: tx.Sender,
-		TxHash:    tx.Txhash,
+		TxHash:    txHash,
 		Validator: tx.Receiver,
 		Amount:    a.Neg(),
-		CreatedAt: time.Unix(tx.Timestamp, 0),
+		CreatedAt: t,
 	})
 	return nil
 }
 
-func (d *data) parseStake(tx node.Tx) error {
-	if !checkSCResults(tx.ScResults, 1) {
-		fmt.Printf("parseStake: checkSCResults: false (tx: %s) \n", tx.Txhash)
+func (d *data) parseStake(tx node.Tx, txHash string, t time.Time) error {
+	if !checkSCResults(tx.SmartContractResults, 1) {
+		fmt.Printf("parseStake: checkSCResults: false (tx: %s) \n", txHash)
 		return nil
 	}
 	amount, err := decimal.NewFromString(tx.Value)
@@ -448,17 +415,17 @@ func (d *data) parseStake(tx node.Tx) error {
 		return fmt.Errorf("decimal.NewFromString: %s", err.Error())
 	}
 	d.stakes = append(d.stakes, dmodels.Stake{
-		TxHash:    tx.Txhash,
+		TxHash:    txHash,
 		Validator: tx.Receiver,
 		Amount:    node.ValueToEGLD(amount),
-		CreatedAt: time.Unix(tx.Timestamp, 0),
+		CreatedAt: t,
 	})
 	return nil
 }
 
-func (d *data) parseUnstake(tx node.Tx, txType string) error {
-	if !checkSCResults(tx.ScResults, 1) {
-		fmt.Printf("parseUnstake: checkSCResults: false (tx: %s) \n", tx.Txhash)
+func (d *data) parseUnstake(tx node.Tx, txType string, txHash string, t time.Time) error {
+	if !checkSCResults(tx.SmartContractResults, 1) {
+		fmt.Printf("parseUnstake: checkSCResults: false (tx: %s) \n", txHash)
 		return nil
 	}
 	amountData := strings.TrimPrefix(txType, "unStake@")
@@ -467,10 +434,10 @@ func (d *data) parseUnstake(tx node.Tx, txType string) error {
 		return fmt.Errorf("decimalFromHex: %s", err.Error())
 	}
 	d.stakes = append(d.stakes, dmodels.Stake{
-		TxHash:    tx.Txhash,
+		TxHash:    txHash,
 		Validator: tx.Receiver,
 		Amount:    a.Neg(),
-		CreatedAt: time.Unix(tx.Timestamp, 0),
+		CreatedAt: t,
 	})
 	return nil
 }
@@ -546,7 +513,7 @@ func (p *Parser) saving() {
 			<-time.After(repeatDelay)
 		}
 		for {
-			err = p.dao.CreateMiniBlocks(singleData.miniBlocks)
+			err = p.dao.CreateMiniBlocks(p.matchMiniblocks(singleData.miniBlocks))
 			if err == nil {
 				break
 			}
@@ -627,6 +594,28 @@ func (p *Parser) setAccounts() {
 	}
 }
 
+func (p *Parser) matchMiniblocks(miniblocks []dmodels.MiniBlock) (result []dmodels.MiniBlock) {
+	mp := make(map[string]dmodels.MiniBlock)
+	for _, mb := range miniblocks {
+		b, ok := mp[mb.Hash]
+		if !ok {
+			mp[mb.Hash] = mb
+			continue
+		}
+		if b.ReceiverBlockHash == "" {
+			b.ReceiverBlockHash = mb.ReceiverBlockHash
+		}
+		if b.SenderBlockHash == "" {
+			b.SenderBlockHash = mb.SenderBlockHash
+		}
+		mp[mb.Hash] = b
+	}
+	for _, b := range mp {
+		result = append(result, b)
+	}
+	return result
+}
+
 func (p *Parser) saveNewAccounts(d data) {
 	var newAccounts []dmodels.Account
 	addAccount := func(acc string, tm time.Time) {
@@ -671,7 +660,7 @@ func decimalFromHex(hexStr string) (result decimal.Decimal, err error) {
 	return node.ValueToEGLD(decimal.NewFromBigInt(a, 0)), nil
 }
 
-func checkSCResults(results []node.ScResult, expectedLen int) bool {
+func checkSCResults(results []node.SmartContractResult, expectedLen int) bool {
 	if len(results) != expectedLen {
 		return false
 	}
