@@ -47,10 +47,12 @@ create table miniblocks
     mlk_created_at          timestamp(0)   not null
 );
 
-create index miniblocks_mlk_receiver_block_hash_index
+create
+index miniblocks_mlk_receiver_block_hash_index
     on miniblocks (mlk_receiver_block_hash);
 
-create index miniblocks_mlk_sender_block_hash_index
+create
+index miniblocks_mlk_sender_block_hash_index
     on miniblocks (mlk_sender_block_hash);
 
 create type tx_status as ENUM ('success', 'fail', 'invalid');
@@ -74,7 +76,8 @@ create table transactions
     trn_created_at      timestamp       not null
 );
 
-create index transactions_mlk_mini_block_hash_index
+create
+index transactions_mlk_mini_block_hash_index
     on transactions (mlk_mini_block_hash);
 
 create table sc_results
@@ -93,7 +96,7 @@ create table sc_results
 );
 
 create
-    index sc_results_trn_hash_index
+index sc_results_trn_hash_index
     on sc_results (trn_hash);
 
 
@@ -115,7 +118,8 @@ create table rewards
     rwd_created_at       timestamp       not null
 );
 
-create index rewards_rwd_receiver_address_index
+create
+index rewards_rwd_receiver_address_index
     on rewards (rwd_receiver_address);
 
 create table delegations
@@ -138,4 +142,31 @@ create table stakes
     stk_amount     numeric(36, 18) not null,
     stk_created_at timestamp       not null
 );
+
+create table daily_stats
+(
+    das_title      varchar(36)     not null,
+    das_value      numeric(36, 18) not null,
+    das_created_at timestamp       not null
+);
+create index daily_stats_das_created_at_index
+    on daily_stats (das_created_at);
+create index daily_stats_das_title_index
+    on daily_stats (das_title);
+
+
+create type stake_event_type as ENUM ('claimRewards', 'delegate', 'unDelegate', 'reDelegateRewards', 'withdraw', 'stake', 'unStake', 'reStakeRewards', 'unBond');
+create table stake_events
+(
+    ste_tx_hash    varchar(64)      not null
+        constraint stakes_pk
+            primary key,
+    ste_type       stake_event_type not null,
+    ste_validator  varchar(64)      not null,
+    ste_delegator  varchar(64)      not null,
+    ste_epoch      integer          not null,
+    stk_amount     numeric(36, 18)  not null,
+    ste_created_at timestamp        not null
+);
+
 

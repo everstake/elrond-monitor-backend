@@ -49,6 +49,7 @@ type (
 		stakes       []dmodels.Stake
 		delegations  []dmodels.Delegation
 		rewards      []dmodels.Reward
+		stakeEvents  []dmodels.StakeEvent
 	}
 	ShardIndex uint64
 )
@@ -288,7 +289,10 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 						fmt.Println(txType, mbTx.Hash)
 					default:
 						if strings.Contains(txType, "unBond") {
-							fmt.Println(txType, 2, mbTx.Hash)
+							err = d.parseUnbond(tx, mbTx.Hash, t)
+							if err != nil {
+								return d, fmt.Errorf("parseUnbond: %s", err.Error())
+							}
 						}
 						if strings.Contains(txType, "relayedTx") {
 							//fmt.Println(txType, mbTx.Hash)
@@ -334,6 +338,15 @@ func (d *data) parseDelegations(tx node.Tx, txHash string, t time.Time) error {
 		Amount:    node.ValueToEGLD(amount),
 		CreatedAt: t,
 	})
+	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
+		TxHash:    txHash,
+		Type:      dmodels.DelegateStakeEventType,
+		Validator: tx.Receiver,
+		Delegator: tx.Sender,
+		Epoch:     tx.Epoch,
+		Amount:    node.ValueToEGLD(amount),
+		CreatedAt: t,
+	})
 	return nil
 }
 
@@ -355,6 +368,15 @@ func (d *data) parseRewardClaims(tx node.Tx, txHash string, nonce uint64, t time
 		ReceiverAddress: tx.Sender,
 		Amount:          node.ValueToEGLD(tx.SmartContractResults[rewardsIndex].Value),
 		CreatedAt:       t,
+	})
+	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
+		TxHash:    txHash,
+		Type:      dmodels.ClaimRewardsEventType,
+		Validator: tx.Receiver,
+		Delegator: tx.Sender,
+		Epoch:     tx.Epoch,
+		Amount:    node.ValueToEGLD(tx.SmartContractResults[rewardsIndex].Value),
+		CreatedAt: t,
 	})
 	return nil
 }
@@ -382,6 +404,15 @@ func (d *data) parseRewardDelegations(tx node.Tx, txHash string, nonce uint64, t
 		Amount:    node.ValueToEGLD(amount),
 		CreatedAt: t,
 	})
+	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
+		TxHash:    txHash,
+		Type:      dmodels.ReDelegateRewardsEventType,
+		Validator: tx.Receiver,
+		Delegator: tx.Sender,
+		Epoch:     tx.Epoch,
+		Amount:    node.ValueToEGLD(amount),
+		CreatedAt: t,
+	})
 	return nil
 }
 
@@ -399,6 +430,15 @@ func (d *data) parseUndelegations(tx node.Tx, txHash string, txType string, t ti
 		Delegator: tx.Sender,
 		TxHash:    txHash,
 		Validator: tx.Receiver,
+		Amount:    a.Neg(),
+		CreatedAt: t,
+	})
+	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
+		TxHash:    txHash,
+		Type:      dmodels.UnDelegateStakeEventType,
+		Validator: tx.Receiver,
+		Delegator: tx.Sender,
+		Epoch:     tx.Epoch,
 		Amount:    a.Neg(),
 		CreatedAt: t,
 	})
@@ -420,6 +460,15 @@ func (d *data) parseStake(tx node.Tx, txHash string, t time.Time) error {
 		Amount:    node.ValueToEGLD(amount),
 		CreatedAt: t,
 	})
+	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
+		TxHash:    txHash,
+		Type:      dmodels.StakeStakeEventType,
+		Validator: tx.Receiver,
+		Delegator: tx.Sender,
+		Epoch:     tx.Epoch,
+		Amount:    node.ValueToEGLD(amount),
+		CreatedAt: t,
+	})
 	return nil
 }
 
@@ -437,6 +486,45 @@ func (d *data) parseUnstake(tx node.Tx, txType string, txHash string, t time.Tim
 		TxHash:    txHash,
 		Validator: tx.Receiver,
 		Amount:    a.Neg(),
+		CreatedAt: t,
+	})
+	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
+		TxHash:    txHash,
+		Type:      dmodels.UnStakeEventType,
+		Validator: tx.Receiver,
+		Delegator: tx.Sender,
+		Epoch:     tx.Epoch,
+		Amount:    a.Neg(),
+		CreatedAt: t,
+	})
+	return nil
+}
+
+func (d *data) parseUnbond(tx node.Tx, txHash string, t time.Time) error {
+	if len(tx.SmartContractResults) != 2 {
+		return fmt.Errorf("len SmartContractResults != 2")
+	}
+	okIndex := 1
+	amountIndex := 0
+	if base64.StdEncoding.EncodeToString([]byte(tx.SmartContractResults[1].Data)) == "delegation stake unbond" {
+		okIndex = 0
+		amountIndex = 1
+	} else if base64.StdEncoding.EncodeToString([]byte(tx.SmartContractResults[0].Data)) != "delegation stake unbond" {
+		return fmt.Errorf("worng format")
+	}
+
+	okStr := base64.StdEncoding.EncodeToString([]byte(tx.SmartContractResults[okIndex].Data))
+	if !strings.Contains(okStr, "@ok") {
+		return fmt.Errorf("wrong format")
+	}
+
+	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
+		TxHash:    txHash,
+		Type:      dmodels.UnBondEventType,
+		Validator: tx.Receiver,
+		Delegator: tx.Sender,
+		Epoch:     tx.Epoch,
+		Amount:    node.ValueToEGLD(tx.SmartContractResults[amountIndex].Value),
 		CreatedAt: t,
 	})
 	return nil
@@ -501,6 +589,7 @@ func (p *Parser) saving() {
 			singleData.delegations = append(singleData.delegations, item.delegations...)
 			singleData.stakes = append(singleData.stakes, item.stakes...)
 			singleData.rewards = append(singleData.rewards, item.rewards...)
+			singleData.stakeEvents = append(singleData.stakeEvents, item.stakeEvents...)
 		}
 		p.wg.Add(1)
 		var err error
@@ -559,6 +648,14 @@ func (p *Parser) saving() {
 				break
 			}
 			log.Error("Parser: dao.CreateRewards: %s", err.Error())
+			<-time.After(repeatDelay)
+		}
+		for {
+			err = p.dao.CreateStakeEvents(singleData.stakeEvents)
+			if err == nil {
+				break
+			}
+			log.Error("Parser: dao.CreateStakeEvents: %s", err.Error())
 			<-time.After(repeatDelay)
 		}
 

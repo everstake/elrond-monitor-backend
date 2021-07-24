@@ -5,3 +5,8 @@ drop table miniblocks;
 drop table transactions;
 drop table sc_results;
 drop table accounts;
+drop table delegations;
+drop table rewards;
+drop table stakes;
+drop table daily_stats;
+drop table stake_events;

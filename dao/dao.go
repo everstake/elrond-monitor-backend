@@ -50,6 +50,12 @@ type (
 
 		// rewards
 		CreateRewards(rewards []dmodels.Reward) error
+
+		// stake events
+		CreateStakeEvents(events []dmodels.StakeEvent) error
+
+		// daily stats
+		CreateDailyStats(stats []dmodels.DailyStat) error
 	}
 
 	DAO interface {

@@ -5,6 +5,7 @@ import (
 	"github.com/everstake/elrond-monitor-backend/config"
 	"github.com/everstake/elrond-monitor-backend/dao"
 	"github.com/everstake/elrond-monitor-backend/services"
+	"github.com/everstake/elrond-monitor-backend/services/dailystats"
 	"github.com/everstake/elrond-monitor-backend/services/modules"
 	"github.com/everstake/elrond-monitor-backend/services/parser"
 	"log"
@@ -37,11 +38,13 @@ func main() {
 		log.Fatalf("services.NewServices: %s", err.Error())
 	}
 
+	ds := dailystats.NewDailyStats(cfg, d)
+
 	prs := parser.NewParser(cfg, d)
 
 	apiServer := api.NewAPI(cfg, s, d)
 
-	g := modules.NewGroup(apiServer, prs)
+	g := modules.NewGroup(apiServer, prs, ds)
 	g.Run()
 
 	gracefulStop := make(chan os.Signal)
