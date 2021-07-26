@@ -25,6 +25,7 @@ const (
 	fetcherChBuffer = 5000
 	saverChBuffer   = 5000
 	msgOKBase64     = "QDZmNmI=" // @ok
+	msgOKHex        = "@6f6b"   // @ok
 )
 
 type (
@@ -258,60 +259,62 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 							unBond - c6c32820df1b44af828121d52207904c53230e9dd3a794e90e714915a68806d4
 
 				*/
-				if tx.Status == dmodels.TxStatusSuccess {
-					txType := string(decodedBytes)
-					switch txType {
-					case "withdraw":
-						// todo claim undelegated value
-					case "stake":
-						err = d.parseStake(tx, mbTx.Hash, t)
+				if tx.Status != dmodels.TxStatusSuccess {
+					continue
+				}
+
+				txType := string(decodedBytes)
+				switch txType {
+				case "withdraw":
+					// todo claim undelegated value
+				case "stake":
+					err = d.parseStake(tx, mbTx.Hash, t)
+					if err != nil {
+						return d, fmt.Errorf("parseStake: %s", err.Error())
+					}
+				case "reDelegateRewards": // create delegation + claimRewards
+					err = d.parseRewardDelegations(tx, mbTx.Hash, nonce, t)
+					if err != nil {
+						return d, fmt.Errorf("parseRewardDelegations: %s", err.Error())
+					}
+				case "reStakeRewards": // create stake + claimRewards (check existence of reStakeRewards tx)
+					fmt.Println(txType, mbTx.Hash)
+				case "delegate":
+					err = d.parseDelegations(tx, mbTx.Hash, t)
+					if err != nil {
+						return d, fmt.Errorf("parseDelegations: %s", err.Error())
+					}
+				case "claimRewards":
+					err = d.parseRewardClaims(tx, mbTx.Hash, nonce, t)
+					if err != nil {
+						return d, fmt.Errorf("parseRewardClaims: %s", err.Error())
+					}
+				case "unBond":
+					fmt.Println(txType, mbTx.Hash)
+				default:
+					if strings.Contains(txType, "unBond") {
+						err = d.parseUnbond(tx, mbTx.Hash, t)
 						if err != nil {
-							return d, fmt.Errorf("parseStake: %s", err.Error())
+							return d, fmt.Errorf("parseUnbond: %s", err.Error())
 						}
-					case "reDelegateRewards": // create delegation + claimRewards
-						err = d.parseRewardDelegations(tx, mbTx.Hash, nonce, t)
+					}
+					if strings.Contains(txType, "relayedTx") {
+						//fmt.Println(txType, mbTx.Hash)
+					}
+					if strings.Contains(txType, "unDelegate") {
+						err = d.parseUndelegations(tx, mbTx.Hash, txType, t)
 						if err != nil {
-							return d, fmt.Errorf("parseRewardDelegations: %s", err.Error())
+							return d, fmt.Errorf("parseUndelegations: %s", err.Error())
 						}
-					case "reStakeRewards": // create stake + claimRewards (check existence of reStakeRewards tx)
+					}
+					if strings.Contains(txType, "unStake") {
+						err = d.parseUnstake(tx, mbTx.Hash, txType, t)
+						if err != nil {
+							return d, fmt.Errorf("parseUnstake: %s", err.Error())
+						}
+					}
+					if strings.Contains(txType, "reStakeRewards") { // check existence of reStakeRewards tx
 						fmt.Println(txType, mbTx.Hash)
-					case "delegate":
-						err = d.parseDelegations(tx, mbTx.Hash, t)
-						if err != nil {
-							return d, fmt.Errorf("parseDelegations: %s", err.Error())
-						}
-					case "claimRewards":
-						err = d.parseRewardClaims(tx, mbTx.Hash, nonce, t)
-						if err != nil {
-							return d, fmt.Errorf("parseRewardClaims: %s", err.Error())
-						}
-					case "unBond":
-						fmt.Println(txType, mbTx.Hash)
-					default:
-						if strings.Contains(txType, "unBond") {
-							err = d.parseUnbond(tx, mbTx.Hash, t)
-							if err != nil {
-								return d, fmt.Errorf("parseUnbond: %s", err.Error())
-							}
-						}
-						if strings.Contains(txType, "relayedTx") {
-							//fmt.Println(txType, mbTx.Hash)
-						}
-						if strings.Contains(txType, "unDelegate") {
-							err = d.parseUndelegations(tx, mbTx.Hash, txType, t)
-							if err != nil {
-								return d, fmt.Errorf("parseUndelegations: %s", err.Error())
-							}
-						}
-						if strings.Contains(txType, "unStake") {
-							err = d.parseUnstake(tx, mbTx.Hash, txType, t)
-							if err != nil {
-								return d, fmt.Errorf("parseUnstake: %s", err.Error())
-							}
-						}
-						if strings.Contains(txType, "reStakeRewards") { // check existence of reStakeRewards tx
-							fmt.Println(txType, mbTx.Hash)
-						}
 					}
 				}
 			}
@@ -356,9 +359,9 @@ func (d *data) parseRewardClaims(tx node.Tx, txHash string, nonce uint64, t time
 		return nil
 	}
 	rewardsIndex := 0
-	if tx.SmartContractResults[0].Data == msgOKBase64 {
+	if tx.SmartContractResults[0].Data == msgOKBase64 || tx.SmartContractResults[0].Data == msgOKHex {
 		rewardsIndex = 1
-	} else if tx.SmartContractResults[1].Data != msgOKBase64 {
+	} else if tx.SmartContractResults[1].Data != msgOKBase64 && tx.SmartContractResults[1].Data != msgOKHex {
 		fmt.Printf("parseRewardClaims can`t find OK msg (tx: %s) \n", txHash)
 		return nil
 	}
@@ -763,13 +766,13 @@ func checkSCResults(results []node.SmartContractResult, expectedLen int) bool {
 	}
 	switch expectedLen {
 	case 1:
-		return results[0].Data == msgOKBase64
+		return results[0].Data == msgOKBase64 || results[0].Data == msgOKHex
 	case 2:
 		okIndex := 0
 		if len(results[0].Data) == 0 {
 			okIndex = 1
 		}
-		return results[okIndex].Data == msgOKBase64
+		return results[okIndex].Data == msgOKBase64 || results[okIndex].Data == msgOKHex
 	}
 	return false
 }

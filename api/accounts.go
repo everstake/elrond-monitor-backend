@@ -15,6 +15,13 @@ func (api *API) GetAccounts(w http.ResponseWriter, r *http.Request) {
 		jsonBadRequest(w, "bad params")
 		return
 	}
+	filter.SetMaxLimit(100)
+	err = filter.Validate()
+	if err != nil {
+		log.Debug("API GetAccounts: filter.Validate: %s", err.Error())
+		jsonBadRequest(w, err.Error())
+		return
+	}
 	resp, err := api.svc.GetAccounts(filter)
 	if err != nil {
 		log.Error("API GetAccounts: svc.GetAccounts: %s", err.Error())

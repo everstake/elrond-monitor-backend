@@ -8,7 +8,7 @@ import (
 )
 
 func (api *API) GetTransaction(w http.ResponseWriter, r *http.Request) {
-	address, ok := mux.Vars(r)["address"]
+	address, ok := mux.Vars(r)["hash"]
 	if !ok || address == "" {
 		jsonBadRequest(w, "invalid address")
 		return
@@ -28,6 +28,13 @@ func (api *API) GetTransactions(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Debug("API GetTransactions: Decode: %s", err.Error())
 		jsonBadRequest(w, "bad params")
+		return
+	}
+	filter.SetMaxLimit(100)
+	err = filter.Validate()
+	if err != nil {
+		log.Debug("API GetTransactions: filter.Validate: %s", err.Error())
+		jsonBadRequest(w, err.Error())
 		return
 	}
 	resp, err := api.svc.GetTransactions(filter)

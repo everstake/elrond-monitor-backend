@@ -50,6 +50,7 @@ func (s *ServiceFacade) GetTransaction(hash string) (tx smodels.Tx, err error) {
 	results := make([]smodels.ScResult, len(dResults))
 	for i, r := range dResults {
 		results[i] = smodels.ScResult{
+			Hash:    r.Hash,
 			From:    r.From,
 			To:      r.To,
 			Value:   r.Value,

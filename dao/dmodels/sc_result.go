@@ -13,5 +13,5 @@ type SCResult struct {
 	To      string          `db:"scr_to"`
 	Value   decimal.Decimal `db:"scr_value"`
 	Data    string          `db:"scr_data"`
-	Message string          `json:"scr_message"`
+	Message string          `db:"scr_message"`
 }

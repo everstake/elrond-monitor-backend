@@ -14,6 +14,7 @@ type (
 		GetTransaction(hash string) (tx smodels.Tx, err error)
 		GetBlock(hash string) (block smodels.Block, err error)
 		GetBlocks(filter filters.Blocks) (items smodels.Pagination, err error)
+		GetBlockByNonce(shard uint64, nonce uint64) (block smodels.Block, err error)
 		GetAccounts(filter filters.Accounts) (items smodels.Pagination, err error)
 		GetMiniBlock(hash string) (block smodels.Miniblock, err error)
 		GetAccount(address string) (account smodels.Account, err error)

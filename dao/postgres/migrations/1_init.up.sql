@@ -1,6 +1,5 @@
 -- +migrate Up
 create sequence parsers_seq;
-
 create table parsers
 (
     par_id     int default nextval('parsers_seq')
@@ -12,7 +11,7 @@ create table parsers
 );
 
 insert into parsers (par_id, par_title, par_height)
-VALUES (1, 'elrond', 4910084);
+VALUES (1, 'elrond', 585045);
 
 create type block_status as ENUM ('on-chain');
 
@@ -32,6 +31,11 @@ create table blocks
     blk_developer_fees   numeric(36, 18) not null,
     blk_accumulated_fees numeric(36, 18) not null
 );
+create index blocks_blk_created_at_index
+    on blocks (blk_created_at);
+create index blocks_blk_shard_blk_nonce_index
+    on blocks (blk_shard, blk_nonce);
+
 
 create type miniblock_type as ENUM ('TxBlock', 'SmartContractResultBlock', 'InvalidBlock', 'RewardsBlock');
 create table miniblocks
@@ -46,14 +50,11 @@ create table miniblocks
     mlk_type                miniblock_type not null,
     mlk_created_at          timestamp(0)   not null
 );
-
-create
-index miniblocks_mlk_receiver_block_hash_index
+create index miniblocks_mlk_receiver_block_hash_index
     on miniblocks (mlk_receiver_block_hash);
-
-create
-index miniblocks_mlk_sender_block_hash_index
+create index miniblocks_mlk_sender_block_hash_index
     on miniblocks (mlk_sender_block_hash);
+
 
 create type tx_status as ENUM ('success', 'fail', 'invalid');
 create table transactions
@@ -75,10 +76,12 @@ create table transactions
     trn_data            text            not null,
     trn_created_at      timestamp       not null
 );
-
-create
-index transactions_mlk_mini_block_hash_index
+create index transactions_mlk_mini_block_hash_index
     on transactions (mlk_mini_block_hash);
+create index transactions_trn_created_at_index
+    on transactions (trn_created_at);
+
+
 
 create table sc_results
 (
@@ -94,9 +97,7 @@ create table sc_results
     scr_data    text        not null,
     scr_message text        not null
 );
-
-create
-index sc_results_trn_hash_index
+create index sc_results_trn_hash_index
     on sc_results (trn_hash);
 
 
@@ -118,8 +119,7 @@ create table rewards
     rwd_created_at       timestamp       not null
 );
 
-create
-index rewards_rwd_receiver_address_index
+create index rewards_rwd_receiver_address_index
     on rewards (rwd_receiver_address);
 
 create table delegations
@@ -159,14 +159,19 @@ create type stake_event_type as ENUM ('claimRewards', 'delegate', 'unDelegate', 
 create table stake_events
 (
     ste_tx_hash    varchar(64)      not null
-        constraint stakes_pk
+        constraint stake_events_pk
             primary key,
     ste_type       stake_event_type not null,
     ste_validator  varchar(64)      not null,
     ste_delegator  varchar(64)      not null,
     ste_epoch      integer          not null,
-    stk_amount     numeric(36, 18)  not null,
+    ste_amount     numeric(36, 18)  not null,
     ste_created_at timestamp        not null
 );
+create index stake_events_ste_created_at_index
+    on stake_events (ste_created_at);
+create index stake_events_ste_delegator_index
+    on stake_events (ste_delegator);
+
 
 

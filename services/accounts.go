@@ -22,7 +22,8 @@ func (s *ServiceFacade) GetAccounts(filter filters.Accounts) (items smodels.Pagi
 			Delegated:       decimal.Decimal{},
 			Undelegated:     decimal.Decimal{},
 			RewardsClaimed:  decimal.Decimal{},
-			StakingProvider: "",
+			StakingProvider: nil,
+			CreatedAt:       smodels.NewTime(a.CreatedAt),
 		}
 	}
 	total, err := s.dao.GetAccountsTotal(filter)
@@ -40,18 +41,20 @@ func (s *ServiceFacade) GetAccount(address string) (account smodels.Account, err
 	if err != nil {
 		return account, fmt.Errorf("node.GetAddress: %s", err.Error())
 	}
+	dAcc, _ := s.dao.GetAccount(address)
 	//delegation, err := s.node.GetAccountDelegation(address)
 	//if err != nil {
 	//	return account, fmt.Errorf("node.GetAccountDelegation: %s", err.Error())
 	//}
 	return smodels.Account{
-		Address:          address,
-		Balance:          node.ValueToEGLD(acc.Balance),
-		Nonce:            acc.Nonce,
+		Address: address,
+		Balance: node.ValueToEGLD(acc.Balance),
+		Nonce:   acc.Nonce,
 		//Delegated:        node.ValueToEGLD(delegation.UserActiveStake),
 		//Undelegated:      node.ValueToEGLD(delegation.UserUnstakedStake),
 		//ClaimableRewards: node.ValueToEGLD(delegation.ClaimableRewards),
 		RewardsClaimed:  decimal.Decimal{},
-		StakingProvider: "",
+		StakingProvider: nil,
+		CreatedAt:       smodels.NewTime(dAcc.CreatedAt),
 	}, nil
 }

@@ -6,8 +6,8 @@ type Block struct {
 	Shard      uint64   `json:"shard"`
 	Epoch      uint64   `json:"epoch"`
 	TxCount    uint64   `json:"tx_count"`
-	Size       uint64   `json:"size,omitempty"`
-	Proposer   string   `json:"propose,omitemptyr"`
+	Size       uint64   `json:"size"`
+	Proposer   string   `json:"proposer"`
 	Miniblocks []string `json:"miniblocks,omitempty"`
 	Timestamp  Time     `json:"timestamp"`
 }

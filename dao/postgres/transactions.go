@@ -89,7 +89,7 @@ func (db Postgres) CreateSCResults(results []dmodels.SCResult) error {
 }
 
 func (db Postgres) GetTransactions(filter filters.Transactions) (txs []dmodels.Transaction, err error) {
-	q := squirrel.Select("*").From(dmodels.TransactionsTable)
+	q := squirrel.Select("*").From(dmodels.TransactionsTable).OrderBy("trn_created_at desc")
 	if filter.Address != "" {
 		q = q.Where(squirrel.Or{squirrel.Eq{"trn_sender": filter.Address}, squirrel.Eq{"trn_receiver": filter.Address}})
 	}
@@ -125,7 +125,7 @@ func (db Postgres) GetTransaction(hash string) (tx dmodels.Transaction, err erro
 }
 
 func (db Postgres) GetSCResults(txHash string) (results []dmodels.SCResult, err error) {
-	q := squirrel.Select("*").From(dmodels.TransactionsTable).Where(squirrel.Eq{"trn_hash": txHash})
+	q := squirrel.Select("*").From(dmodels.SCResultsTable).Where(squirrel.Eq{"trn_hash": txHash})
 	err = db.find(&results, q)
 	return results, err
 }

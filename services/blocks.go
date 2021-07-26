@@ -34,11 +34,11 @@ func (s *ServiceFacade) GetBlock(hash string) (block smodels.Block, err error) {
 	//	return block, fmt.Errorf("node.GetExtraDataBlock: %s", err.Error())
 	//}
 	block = smodels.Block{
-		Hash:       dBlock.Hash,
-		Nonce:      dBlock.Nonce,
-		Shard:      dBlock.Shard,
-		Epoch:      dBlock.Epoch,
-		TxCount:    dBlock.NumTxs,
+		Hash:    dBlock.Hash,
+		Nonce:   dBlock.Nonce,
+		Shard:   dBlock.Shard,
+		Epoch:   dBlock.Epoch,
+		TxCount: dBlock.NumTxs,
 		//Size:       extraData.Size,
 		//Proposer:   extraData.Proposer,
 		Miniblocks: miniBlocksHashes,
@@ -73,6 +73,20 @@ func (s *ServiceFacade) GetBlocks(filter filters.Blocks) (items smodels.Paginati
 	}, nil
 }
 
+func (s *ServiceFacade) GetBlockByNonce(shard uint64, nonce uint64) (block smodels.Block, err error) {
+	dBlocks, err := s.dao.GetBlocks(filters.Blocks{
+		Shard: []uint64{shard},
+		Nonce: nonce,
+	})
+	if err != nil {
+		return block, fmt.Errorf("dao.GetBlocks: %s", err.Error())
+	}
+	if len(dBlocks) == 0 {
+		return block, fmt.Errorf("not found shard: %d, nonce: %d", shard, nonce)
+	}
+	return s.GetBlock(dBlocks[0].Hash)
+}
+
 func (s *ServiceFacade) GetMiniBlock(hash string) (block smodels.Miniblock, err error) {
 	dBlock, err := s.dao.GetMiniBlock(hash)
 	if err != nil {
@@ -83,8 +97,8 @@ func (s *ServiceFacade) GetMiniBlock(hash string) (block smodels.Miniblock, err 
 		return block, fmt.Errorf("dao.GetTransactions: %s", err.Error())
 	}
 	txs := make([]smodels.Tx, len(dTxs))
-	for _, tx := range dTxs {
-		txs = append(txs, smodels.Tx{
+	for i, tx := range dTxs {
+		txs[i] = smodels.Tx{
 			Hash:          tx.Hash,
 			Status:        tx.Status,
 			From:          tx.Sender,
@@ -97,7 +111,7 @@ func (s *ServiceFacade) GetMiniBlock(hash string) (block smodels.Miniblock, err 
 			ShardTo:       tx.ReceiverShard,
 			Type:          "", // todo
 			Timestamp:     smodels.NewTime(tx.CreatedAt),
-		})
+		}
 	}
 	return smodels.Miniblock{
 		Hash:          dBlock.Hash,

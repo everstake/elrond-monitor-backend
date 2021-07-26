@@ -91,7 +91,13 @@ func (db Postgres) CreateMiniBlocks(blocks []dmodels.MiniBlock) error {
 }
 
 func (db Postgres) GetBlocks(filter filters.Blocks) (blocks []dmodels.Block, err error) {
-	q := squirrel.Select("*").From(dmodels.BlocksTable)
+	q := squirrel.Select("*").From(dmodels.BlocksTable).OrderBy("blk_created_at desc")
+	if len(filter.Shard) != 0 {
+		q = q.Where(squirrel.Eq{"blk_shard": filter.Shard})
+	}
+	if filter.Nonce != 0 {
+		q = q.Where(squirrel.Eq{"blk_nonce": filter.Nonce})
+	}
 	if filter.Limit != 0 {
 		q = q.Limit(filter.Limit)
 	}
