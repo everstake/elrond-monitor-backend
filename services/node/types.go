@@ -151,4 +151,14 @@ type (
 		Nonce            uint64    `json:"nonce"`
 		NumInstances     uint64    `json:"numInstances"`
 	}
+
+	NetworkEconomics struct {
+		ErdDevRewards            decimal.Decimal `json:"erd_dev_rewards"`
+		ErdEpochForEconomicsData uint64          `json:"erd_epoch_for_economics_data"`
+		ErdInflation             decimal.Decimal `json:"erd_inflation"`
+		ErdTotalBaseStakedValue  decimal.Decimal `json:"erd_total_base_staked_value"`
+		ErdTotalFees             decimal.Decimal `json:"erd_total_fees"`
+		ErdTotalSupply           decimal.Decimal `json:"erd_total_supply"`
+		ErdTotalTopUpValue       decimal.Decimal `json:"erd_total_top_up_value"`
+	}
 )

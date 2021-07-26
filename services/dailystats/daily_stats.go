@@ -16,6 +16,11 @@ import (
 const (
 	PriceKey         = "price"
 	TradingVolumeKey = "trading_volume"
+	TotalStakeKey    = "total_stake"
+	TotalFeeKey      = "total_fee"
+	TotalSupplyKey   = "total_supply"
+	TotalAccountKey  = "total_accounts"
+	TopUpAmountKey   = "top_up"
 )
 
 type (

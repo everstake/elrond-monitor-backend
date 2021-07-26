@@ -24,6 +24,7 @@ const (
 	networkStatusEndpoint        = "/network/status/%d"
 	validatorStatisticsEndpoint  = "/validator/statistics"
 	heartbeatstatusEndpoint      = "/node/heartbeatstatus"
+	networkEconomicsEndpoint     = "/network/economics"
 )
 
 var precisionDiv = decimal.New(1, Precision)
@@ -49,6 +50,7 @@ type (
 		GetNetworkStatus(shardID uint64) (status NetworkStatus, err error)
 		GetValidatorStatistics() (statistics ValidatorStatistics, err error)
 		GetHeartbeatStatus() (status HeartbeatStatus, err error)
+		GetNetworkEconomics() (ne NetworkEconomics, err error)
 	}
 )
 
@@ -105,6 +107,11 @@ func (api *API) GetTransaction(hash string) (tx Tx, err error) {
 	endpoint := fmt.Sprintf(transactionEndpoint, hash)
 	err = api.get(endpoint, &tx, "transaction")
 	return tx, err
+}
+
+func (api *API) GetNetworkEconomics() (ne NetworkEconomics, err error) {
+	err = api.get(networkEconomicsEndpoint, &ne, "metrics")
+	return ne, err
 }
 
 func (api *API) get(endpoint string, result interface{}, field string) error {

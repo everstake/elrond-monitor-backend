@@ -1,7 +1,7 @@
 package cmc
 
 import (
-	smodels2 "github.com/everstake/elrond-monitor-backend/smodels"
+	"github.com/everstake/elrond-monitor-backend/smodels"
 )
 
 type CMC struct {
@@ -14,6 +14,6 @@ func NewCMC(apiKey string) *CMC {
 	}
 }
 
-func (C CMC) GetMarketData() (smodels2.MarketData, error) {
-	return smodels2.MarketData{}, nil
+func (C CMC) GetMarketData() (smodels.MarketData, error) {
+	return smodels.MarketData{}, nil
 }
