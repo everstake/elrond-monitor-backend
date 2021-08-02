@@ -3,12 +3,11 @@ info:
   title: Elrond-Monitor API
   version: 1.0.0
 paths:
-  /network:
+  /stats:
     get:
-      deprecated: true
       tags:
         - Network
-      summary: Get network stats
+      summary: Get blockchain stats
       responses:
         200:
           description: "Success"
@@ -17,47 +16,30 @@ paths:
               schema:
                 type: object
                 properties:
-                  total_stake:
+                  price:
                     type: number
-                  total_delegators:
+                  price_change:
                     type: number
-                  total_accounts:
+                  trading_volume:
                     type: number
-                  top_up_stake:
+                  cap:
                     type: number
-                  active_validators:
-                    type: number
-                  staking_apr:
-                    type: number
-                  block_time:
-                    type: number
-  /market:
-    get:
-      deprecated: true
-      tags:
-        - Market
-      summary: Get market stats
-      responses:
-        200:
-          description: "Success"
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  market_cap:
+                  cap_change:
                     type: number
                   circulating_supply:
                     type: number
-                  max_price:
+                  total_supply:
                     type: number
-                  price:
+                  height:
+                    type: number
+                  total_txs:
+                    type: number
+                  total_accounts:
                     type: number
   /epoch:
     get:
-      deprecated: true
       tags:
-        - Epoch
+        - Network
       summary: Get epoch stats
       responses:
         200:
@@ -67,16 +49,50 @@ paths:
               schema:
                 type: object
                 properties:
-                  number:
+                  current_round:
                     type: number
-                  ends_after:
+                  epoch_number:
                     type: number
-                  total_stake:
+                  nonce:
                     type: number
-                  total_delegators:
+                  rounds_per_epoch:
                     type: number
-                  price_shift:
-                    type: number
+  /accounts/range:
+    get:
+      tags:
+        - Network
+      summary: Get daily total accounts
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rangeData'
+  /transactions/range:
+    get:
+      tags:
+        - Network
+      summary: Get daily total transactions
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rangeData'
   /accounts:
     get:
       parameters:
@@ -546,6 +562,15 @@ components:
           fee: "0.000035",
           miniblock_hash: "d9a9d31b0553c4d40a62b8e0fe9a8cf603d8d0eff3d609a40e44b361bbb5a659",
           timestamp: 1623945181 }
+    rangeData:
+      type: array
+      items:
+        type: object
+        properties:
+          value:
+            type: number
+          time:
+            type: number
     success:
       type: object
       properties:
