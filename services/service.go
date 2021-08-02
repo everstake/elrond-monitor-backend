@@ -20,6 +20,10 @@ type (
 		GetAccount(address string) (account smodels.Account, err error)
 		UpdateNodes() error
 		GetNodes(filter filters.Nodes) (nodes []node.HeartbeatStatus, err error)
+		UpdateStats()
+		GetStats() (stats smodels.Stats, err error)
+		GetDailyStats(filter filters.DailyStats) (items []smodels.RangeItem, err error)
+		GetEpoch() (epoch smodels.Epoch, err error)
 	}
 
 	ServiceFacade struct {

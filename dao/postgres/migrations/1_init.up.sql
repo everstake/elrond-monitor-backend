@@ -174,4 +174,14 @@ create index stake_events_ste_delegator_index
     on stake_events (ste_delegator);
 
 
+create table storage
+(
+    stg_key   varchar(50)           not null
+        constraint storage_pk
+            primary key,
+    stg_value text default ''::text not null
+);
+INSERT INTO storage (stg_key) VALUES ('stats');
+
+
 

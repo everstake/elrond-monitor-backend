@@ -8,9 +8,11 @@ import (
 	"github.com/everstake/elrond-monitor-backend/services/dailystats"
 	"github.com/everstake/elrond-monitor-backend/services/modules"
 	"github.com/everstake/elrond-monitor-backend/services/parser"
+	"github.com/everstake/elrond-monitor-backend/services/scheduler"
 	"log"
 	"os"
 	"os/signal"
+	"time"
 )
 
 const (
@@ -38,13 +40,19 @@ func main() {
 		log.Fatalf("services.NewServices: %s", err.Error())
 	}
 
-	ds := dailystats.NewDailyStats(cfg, d)
+	ds, err := dailystats.NewDailyStats(cfg, d)
+	if err != nil {
+		log.Fatalf("dailystats.NewDailyStats: %s", err.Error())
+	}
 
 	prs := parser.NewParser(cfg, d)
 
 	apiServer := api.NewAPI(cfg, s, d)
 
-	g := modules.NewGroup(apiServer, prs, ds)
+	sch := scheduler.NewScheduler()
+	sch.AddProcessWithInterval(s.UpdateStats, time.Minute)
+
+	g := modules.NewGroup(apiServer, prs, ds, sch)
 	g.Run()
 
 	gracefulStop := make(chan os.Signal)

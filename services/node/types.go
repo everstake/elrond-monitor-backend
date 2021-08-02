@@ -96,15 +96,15 @@ type (
 	}
 
 	NetworkStatus struct {
-		ErdCurrentRound               int `json:"erd_current_round"`
-		ErdEpochNumber                int `json:"erd_epoch_number"`
-		ErdHighestFinalNonce          int `json:"erd_highest_final_nonce"`
-		ErdNonce                      int `json:"erd_nonce"`
-		ErdNonceAtEpochStart          int `json:"erd_nonce_at_epoch_start"`
-		ErdNoncesPassedInCurrentEpoch int `json:"erd_nonces_passed_in_current_epoch"`
-		ErdRoundAtEpochStart          int `json:"erd_round_at_epoch_start"`
-		ErdRoundsPassedInCurrentEpoch int `json:"erd_rounds_passed_in_current_epoch"`
-		ErdRoundsPerEpoch             int `json:"erd_rounds_per_epoch"`
+		ErdCurrentRound               uint64 `json:"erd_current_round"`
+		ErdEpochNumber                uint64 `json:"erd_epoch_number"`
+		ErdHighestFinalNonce          uint64 `json:"erd_highest_final_nonce"`
+		ErdNonce                      uint64 `json:"erd_nonce"`
+		ErdNonceAtEpochStart          uint64 `json:"erd_nonce_at_epoch_start"`
+		ErdNoncesPassedInCurrentEpoch uint64 `json:"erd_nonces_passed_in_current_epoch"`
+		ErdRoundAtEpochStart          uint64 `json:"erd_round_at_epoch_start"`
+		ErdRoundsPassedInCurrentEpoch uint64 `json:"erd_rounds_passed_in_current_epoch"`
+		ErdRoundsPerEpoch             uint64 `json:"erd_rounds_per_epoch"`
 	}
 
 	Account struct {

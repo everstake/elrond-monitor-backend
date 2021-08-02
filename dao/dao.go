@@ -56,6 +56,7 @@ type (
 
 		// daily stats
 		CreateDailyStats(stats []dmodels.DailyStat) error
+		GetDailyStatsRange(filter filters.DailyStats) (items []dmodels.DailyStat, err error)
 	}
 
 	DAO interface {

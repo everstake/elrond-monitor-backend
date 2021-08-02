@@ -16,6 +16,7 @@ require (
 	github.com/rs/cors v1.8.0
 	github.com/shopspring/decimal v1.2.0
 	github.com/stretchr/testify v1.7.0 // indirect
+	github.com/superoo7/go-gecko v1.0.0 // indirect
 	github.com/urfave/negroni v1.0.0
 	golang.org/x/sys v0.0.0-20210217105451-b926d437f341 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect

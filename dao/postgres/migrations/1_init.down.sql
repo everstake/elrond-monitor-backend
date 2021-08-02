@@ -10,3 +10,4 @@ drop table rewards;
 drop table stakes;
 drop table daily_stats;
 drop table stake_events;
+drop table storage;

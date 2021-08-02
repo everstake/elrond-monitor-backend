@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Masterminds/squirrel"
 	"github.com/everstake/elrond-monitor-backend/dao/dmodels"
+	"github.com/everstake/elrond-monitor-backend/dao/filters"
 )
 
 func (db Postgres) CreateDailyStats(stats []dmodels.DailyStat) error {
@@ -32,3 +33,14 @@ func (db Postgres) CreateDailyStats(stats []dmodels.DailyStat) error {
 	return err
 }
 
+func (db Postgres) GetDailyStatsRange(filter filters.DailyStats) (items []dmodels.DailyStat, err error) {
+	q := squirrel.Select("*").
+		From(dmodels.DailyStatsTable).
+		OrderBy("das_created_at desc").
+		Where(squirrel.Eq{"das_title": filter.Key})
+	if filter.Limit != 0 {
+		q = q.Limit(filter.Limit)
+	}
+	err = db.find(&items, q)
+	return items, err
+}

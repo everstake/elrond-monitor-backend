@@ -7,6 +7,7 @@ import (
 	"github.com/everstake/elrond-monitor-backend/dao"
 	"github.com/everstake/elrond-monitor-backend/log"
 	"github.com/everstake/elrond-monitor-backend/services"
+	"github.com/everstake/elrond-monitor-backend/services/dailystats"
 	"github.com/everstake/elrond-monitor-backend/smodels"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/schema"
@@ -85,8 +86,8 @@ func (api *API) loadRoutes() {
 	wrapper.Use(cors.New(cors.Options{
 		AllowedOrigins:   api.cfg.API.CORSAllowedOrigins,
 		AllowCredentials: true,
-		AllowedMethods:   []string{"POST", "GET", "OPTIONS", "PUT", "DELETE"},
-		AllowedHeaders:   []string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization", "X-User-Env", "Sec-Fetch-Mode"},
+		AllowedMethods:   []string{"POST", "GET", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Sec-Fetch-Mode"},
 	}))
 
 	// public
@@ -103,6 +104,10 @@ func (api *API) loadRoutes() {
 		{Path: "/accounts", Method: http.MethodGet, Func: api.GetAccounts},
 		{Path: "/account/{address}", Method: http.MethodGet, Func: api.GetAccount},
 		{Path: "/miniblock/{hash}", Method: http.MethodGet, Func: api.GetMiniBlock},
+		{Path: "/stats", Method: http.MethodGet, Func: api.GetStats},
+		{Path: "/transactions/range", Method: http.MethodGet, Func: api.GetDailyStats(dailystats.TotalTransactionsKey)},
+		{Path: "/accounts/range", Method: http.MethodGet, Func: api.GetDailyStats(dailystats.TotalAccountKey)},
+		{Path: "/epoch", Method: http.MethodGet, Func: api.GetEpoch},
 	})
 
 }

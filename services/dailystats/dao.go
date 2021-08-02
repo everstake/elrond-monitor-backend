@@ -15,3 +15,13 @@ func (ds *DailyStats) GetTotalAccounts() (map[string]decimal.Decimal, error) {
 		TotalAccountKey: decimal.NewFromInt(int64(total)),
 	}, nil
 }
+
+func (ds *DailyStats) GetTotalTransactions() (map[string]decimal.Decimal, error) {
+	total, err := ds.dao.GetTransactionsTotal(filters.Transactions{})
+	if err != nil {
+		return nil, fmt.Errorf("dao.GetTransactionsTotal: %s", err.Error())
+	}
+	return map[string]decimal.Decimal{
+		TotalTransactionsKey: decimal.NewFromInt(int64(total)),
+	}, nil
+}
