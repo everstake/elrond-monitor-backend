@@ -24,6 +24,8 @@ type (
 		GetStats() (stats smodels.Stats, err error)
 		GetDailyStats(filter filters.DailyStats) (items []smodels.RangeItem, err error)
 		GetEpoch() (epoch smodels.Epoch, err error)
+		UpdateValidatorsMap()
+		GetValidatorsMap() ([]byte, error)
 	}
 
 	ServiceFacade struct {

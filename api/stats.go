@@ -38,3 +38,14 @@ func (api *API) GetDailyStats(key string) func(w http.ResponseWriter, r *http.Re
 		jsonData(w, resp)
 	}
 }
+
+func (api *API) GetValidatorsMap(w http.ResponseWriter, r *http.Request) {
+	data, err := api.svc.GetValidatorsMap()
+	if err != nil {
+		log.Error("API GetValidatorsMap: svc.GetValidatorsMap: %s", err.Error())
+		jsonError(w)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
+}

@@ -51,6 +51,7 @@ func main() {
 
 	sch := scheduler.NewScheduler()
 	sch.AddProcessWithInterval(s.UpdateStats, time.Minute)
+	sch.AddProcessWithInterval(s.UpdateValidatorsMap, time.Minute*20)
 
 	g := modules.NewGroup(apiServer, prs, ds, sch)
 	g.Run()

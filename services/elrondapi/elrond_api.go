@@ -14,12 +14,13 @@ const (
 	identitiesEndpoint            = "/identities"
 	economicsEndpoint             = "/economics"
 	accountDelegationEndpoint     = "/accounts/%s/delegation-legacy"
+
+	host = "https://api.elrond.com"
 )
 
 type (
 	API struct {
 		client  *http.Client
-		address string
 	}
 
 	APIi interface {
@@ -30,12 +31,11 @@ type (
 	}
 )
 
-func NewAPI(apiAddress string) *API {
+func NewAPI() *API {
 	return &API{
 		client: &http.Client{
 			Timeout: time.Second * 30,
 		},
-		address: apiAddress,
 	}
 }
 
@@ -61,7 +61,7 @@ func (api *API) GetAccountDelegation(address string) (account AccountDelegation,
 }
 
 func (api *API) get(endpoint string, params map[string]string, result interface{}) error {
-	fullURL := fmt.Sprintf("%s%s", api.address, endpoint)
+	fullURL := fmt.Sprintf("%s%s", host, endpoint)
 	if len(params) != 0 {
 		values := url.Values{}
 		for key, value := range params {

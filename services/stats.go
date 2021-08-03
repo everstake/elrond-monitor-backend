@@ -2,14 +2,21 @@ package services
 
 import (
 	"fmt"
+	"github.com/everstake/elrond-monitor-backend/dao/dmodels"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/log"
 	"github.com/everstake/elrond-monitor-backend/services/market"
 	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/everstake/elrond-monitor-backend/smodels"
+	"io/ioutil"
+	"net/http"
 )
 
-const statsStorageKey = "stats"
+const (
+	statsStorageKey         = "stats"
+	validatorsMapSource     = "https://internal-api.elrond.com/markers"
+	validatorsMapStorageKey = "validators_map"
+)
 
 func (s *ServiceFacade) GetStats() (stats smodels.Stats, err error) {
 	err = s.getCache(statsStorageKey, &stats)
@@ -61,6 +68,40 @@ func (s *ServiceFacade) updateStats() error {
 	})
 	if err != nil {
 		return fmt.Errorf("setCache: %s", err.Error())
+	}
+	return nil
+}
+
+func (s *ServiceFacade) GetValidatorsMap() ([]byte, error) {
+	data, err := s.dao.GetStorageValue(validatorsMapSource)
+	if err != nil {
+		return nil, fmt.Errorf("dao.GetStorageValue: %s", err.Error())
+	}
+	return []byte(data), nil
+}
+
+func (s *ServiceFacade) UpdateValidatorsMap() {
+	err := s.updateValidatorsMap()
+	if err != nil {
+		log.Error("updateValidatorsMap: %s", err.Error())
+	}
+}
+
+func (s *ServiceFacade) updateValidatorsMap() error {
+	resp, err := http.DefaultClient.Get(validatorsMapSource)
+	if err != nil {
+		return fmt.Errorf("http.DefaultClient.Get: %s", err.Error())
+	}
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("ioutil.ReadAll: %s", err.Error())
+	}
+	err = s.dao.UpdateStorageValue(dmodels.StorageItem{
+		Key:   validatorsMapStorageKey,
+		Value: string(data),
+	})
+	if err != nil {
+		return fmt.Errorf("dao.UpdateStorageValue: %s", err.Error())
 	}
 	return nil
 }
