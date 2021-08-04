@@ -82,7 +82,8 @@ func (s *ServiceFacade) GetBlockByNonce(shard uint64, nonce uint64) (block smode
 		return block, fmt.Errorf("dao.GetBlocks: %s", err.Error())
 	}
 	if len(dBlocks) == 0 {
-		return block, fmt.Errorf("not found shard: %d, nonce: %d", shard, nonce)
+		errMsg := fmt.Sprintf("not found shard: %d, nonce: %d", shard, nonce)
+		return block, smodels.Error{Err: errMsg, Msg: errMsg, HttpCode: 404}
 	}
 	return s.GetBlock(dBlocks[0].Hash)
 }

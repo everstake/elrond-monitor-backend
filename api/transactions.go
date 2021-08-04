@@ -16,7 +16,7 @@ func (api *API) GetTransaction(w http.ResponseWriter, r *http.Request) {
 	resp, err := api.svc.GetTransaction(address)
 	if err != nil {
 		log.Error("API GetTransaction: svc.GetTransaction: %s", err.Error())
-		jsonError(w)
+		jsonError(err, w)
 		return
 	}
 	jsonData(w, resp)
@@ -40,7 +40,7 @@ func (api *API) GetTransactions(w http.ResponseWriter, r *http.Request) {
 	resp, err := api.svc.GetTransactions(filter)
 	if err != nil {
 		log.Error("API GetTransactions: svc.GetTransactions: %s", err.Error())
-		jsonError(w)
+		jsonError(err, w)
 		return
 	}
 	jsonData(w, resp)

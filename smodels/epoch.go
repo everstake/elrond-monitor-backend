@@ -6,6 +6,6 @@ type Epoch struct {
 	Nonce          uint64  `json:"nonce"`
 	RoundsPerEpoch uint64  `json:"rounds_per_epoch"`
 	Percent        float64 `json:"percent"`
+	Left           uint64  `json:"left"`
 	Start          Time    `json:"start"`
-	End            Time    `json:"end"`
 }

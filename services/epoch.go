@@ -15,18 +15,16 @@ func (s *ServiceFacade) GetEpoch() (epoch smodels.Epoch, err error) {
 	if s.networkConfig.ErdRoundsPerEpoch == 0 {
 		return epoch, fmt.Errorf("RoundsPerEpoch is zero")
 	}
-	roundsLeft := status.ErdCurrentRound - s.networkConfig.ErdRoundsPerEpoch*status.ErdEpochNumber
-	percent := (float64(roundsLeft) / float64(s.networkConfig.ErdRoundsPerEpoch)) * 100
-	start := s.networkConfig.ErdStartTime*1000 + status.ErdEpochNumber*s.networkConfig.ErdRoundsPerEpoch*s.networkConfig.ErdRoundDuration
-	finalRound := status.ErdCurrentRound + roundsLeft
-	end := start + s.networkConfig.ErdRoundDuration*finalRound
+	percent := float64(status.ErdNoncesPassedInCurrentEpoch) / float64(s.networkConfig.ErdRoundsPerEpoch) * 100
+	left := (s.networkConfig.ErdRoundsPerEpoch - status.ErdNoncesPassedInCurrentEpoch) * s.networkConfig.ErdRoundDuration
+	start := time.Now().Add(- time.Duration(s.networkConfig.ErdRoundDuration*status.ErdNoncesPassedInCurrentEpoch) * time.Millisecond)
 	return smodels.Epoch{
 		CurrentRound:   status.ErdCurrentRound,
 		EpochNumber:    status.ErdEpochNumber,
 		Nonce:          status.ErdNonce,
 		RoundsPerEpoch: status.ErdRoundsPerEpoch,
 		Percent:        percent,
-		Start:          smodels.NewTime(time.Unix(int64(start/1000), 0)),
-		End:            smodels.NewTime(time.Unix(int64(end/1000), 0)),
+		Left:           left / 1000,
+		Start:          smodels.NewTime(start),
 	}, nil
 }

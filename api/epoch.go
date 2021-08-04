@@ -9,7 +9,7 @@ func (api *API) GetEpoch(w http.ResponseWriter, r *http.Request) {
 	resp, err := api.svc.GetEpoch()
 	if err != nil {
 		log.Error("API GetEpoch: svc.GetEpoch: %s", err.Error())
-		jsonError(w)
+		jsonError(err, w)
 		return
 	}
 	jsonData(w, resp)

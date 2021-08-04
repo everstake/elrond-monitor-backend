@@ -30,7 +30,7 @@ type API struct {
 
 type errResponse struct {
 	Error string `json:"error"`
-	Msg   string `json:"msg"`
+	Msg   string `json:"msg,omitempty"`
 }
 
 func NewAPI(cfg config.Config, svc services.Services, dao dao.DAO) *API {
@@ -124,11 +124,19 @@ func jsonData(writer http.ResponseWriter, data interface{}) {
 	writer.Write(bytes)
 }
 
-func jsonError(writer http.ResponseWriter) {
-	writer.WriteHeader(500)
-	bytes, err := json.Marshal(errResponse{
-		Error: "service_error",
-	})
+func jsonError(err error, writer http.ResponseWriter) {
+	var bytes []byte
+	if customErr, ok := err.(smodels.Err); ok {
+		writer.WriteHeader(customErr.Code())
+		bytes, err = json.Marshal(errResponse{
+			Error: customErr.Message(),
+		})
+	} else {
+		writer.WriteHeader(500)
+		bytes, err = json.Marshal(errResponse{
+			Error: "service_error",
+		})
+	}
 	if err != nil {
 		writer.Write([]byte("can`t marshal json"))
 		return

@@ -10,7 +10,7 @@ func (api *API) GetStats(w http.ResponseWriter, r *http.Request) {
 	resp, err := api.svc.GetStats()
 	if err != nil {
 		log.Error("API GetStats: svc.GetStats: %s", err.Error())
-		jsonError(w)
+		jsonError(err, w)
 		return
 	}
 	jsonData(w, resp)
@@ -32,7 +32,7 @@ func (api *API) GetDailyStats(key string) func(w http.ResponseWriter, r *http.Re
 		resp, err := api.svc.GetDailyStats(filter)
 		if err != nil {
 			log.Error("API GetStats: svc.GetDailyStats: %s", err.Error())
-			jsonError(w)
+			jsonError(err, w)
 			return
 		}
 		jsonData(w, resp)
@@ -43,7 +43,7 @@ func (api *API) GetValidatorsMap(w http.ResponseWriter, r *http.Request) {
 	data, err := api.svc.GetValidatorsMap()
 	if err != nil {
 		log.Error("API GetValidatorsMap: svc.GetValidatorsMap: %s", err.Error())
-		jsonError(w)
+		jsonError(err, w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

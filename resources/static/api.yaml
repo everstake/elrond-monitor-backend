@@ -59,7 +59,7 @@ paths:
                     type: number
                   start:
                     type: number
-                  end:
+                  left:
                     type: number
   /accounts/range:
     get:
