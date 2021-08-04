@@ -35,7 +35,9 @@ func main() {
 		log.Fatalf("dao.NewDAO: %s", err.Error())
 	}
 
-	s, err := services.NewServices(d, cfg)
+	prs := parser.NewParser(cfg, d)
+
+	s, err := services.NewServices(d, cfg, prs)
 	if err != nil {
 		log.Fatalf("services.NewServices: %s", err.Error())
 	}
@@ -44,8 +46,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("dailystats.NewDailyStats: %s", err.Error())
 	}
-
-	prs := parser.NewParser(cfg, d)
 
 	apiServer := api.NewAPI(cfg, s, d)
 

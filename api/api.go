@@ -109,6 +109,7 @@ func (api *API) loadRoutes() {
 		{Path: "/accounts/range", Method: http.MethodGet, Func: api.GetDailyStats(dailystats.TotalAccountKey)},
 		{Path: "/epoch", Method: http.MethodGet, Func: api.GetEpoch},
 		{Path: "/validators/map", Method: http.MethodGet, Func: api.GetValidatorsMap},
+		{Path: "/stake/events", Method: http.MethodGet, Func: api.GetStakeEvents},
 	})
 
 }

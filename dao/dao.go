@@ -53,6 +53,10 @@ type (
 
 		// stake events
 		CreateStakeEvents(events []dmodels.StakeEvent) error
+		GetDelegationState() (items []dmodels.StakeState, err error)
+		GetStakeState() (items []dmodels.StakeState, err error)
+		GetStakeEvents(filter filters.StakeEvents) (items []dmodels.StakeEvent, err error)
+		GetStakeEventsTotal(filter filters.StakeEvents) (total uint64, err error)
 
 		// daily stats
 		CreateDailyStats(stats []dmodels.DailyStat) error

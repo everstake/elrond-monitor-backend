@@ -7,6 +7,7 @@ import (
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/everstake/elrond-monitor-backend/smodels"
+	"github.com/shopspring/decimal"
 )
 
 type (
@@ -27,6 +28,10 @@ type (
 		GetEpoch() (epoch smodels.Epoch, err error)
 		UpdateValidatorsMap()
 		GetValidatorsMap() ([]byte, error)
+		GetStakeEvents(filter filters.StakeEvents) (items smodels.Pagination, err error)
+	}
+	parser interface {
+		GetDelegations(delegator string) map[string]decimal.Decimal
 	}
 
 	ServiceFacade struct {
@@ -34,10 +39,11 @@ type (
 		cfg           config.Config
 		node          node.APIi
 		networkConfig node.NetworkConfig
+		parser        parser
 	}
 )
 
-func NewServices(d dao.DAO, cfg config.Config) (svc Services, err error) {
+func NewServices(d dao.DAO, cfg config.Config, p parser) (svc Services, err error) {
 	n := node.NewAPI(cfg.Parser.Node)
 	nCfg, err := n.GetNetworkConfig()
 	if err != nil {
@@ -48,5 +54,6 @@ func NewServices(d dao.DAO, cfg config.Config) (svc Services, err error) {
 		cfg:           cfg,
 		node:          n,
 		networkConfig: nCfg,
+		parser:        p,
 	}, nil
 }

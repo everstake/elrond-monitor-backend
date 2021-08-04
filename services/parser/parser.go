@@ -25,7 +25,7 @@ const (
 	fetcherChBuffer = 5000
 	saverChBuffer   = 5000
 	msgOKBase64     = "QDZmNmI=" // @ok
-	msgOKHex        = "@6f6b"   // @ok
+	msgOKHex        = "@6f6b"    // @ok
 )
 
 type (
@@ -39,6 +39,9 @@ type (
 		ctx       context.Context
 		cancel    context.CancelFunc
 		wg        *sync.WaitGroup
+
+		mu          *sync.RWMutex
+		delegations map[string]map[string]decimal.Decimal
 	}
 	data struct {
 		height       uint64
@@ -67,6 +70,9 @@ func NewParser(cfg config.Config, d dao.DAO) *Parser {
 		ctx:       ctx,
 		cancel:    cancel,
 		wg:        &sync.WaitGroup{},
+
+		mu:          &sync.RWMutex{},
+		delegations: make(map[string]map[string]decimal.Decimal),
 	}
 }
 
@@ -74,6 +80,10 @@ func (p *Parser) Run() error {
 	model, err := p.dao.GetParser(parserTitle)
 	if err != nil {
 		return fmt.Errorf("parser not found")
+	}
+	err = p.loadStates()
+	if err != nil {
+		return fmt.Errorf("loadStates: %s", err.Error())
 	}
 	for i := uint64(0); i < p.cfg.Parser.Fetchers; i++ {
 		go p.runFetcher()
@@ -86,7 +96,7 @@ func (p *Parser) Run() error {
 			log.Error("Parser: node.GetMaxHeight: %s", err.Error())
 			continue
 		}
-		latestBlock := uint64(networkStatus.ErdNonce)
+		latestBlock := networkStatus.ErdNonce
 		if model.Height >= latestBlock {
 			<-time.After(time.Second)
 			continue
@@ -246,19 +256,6 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 					return d, fmt.Errorf("base64.DecodeString: %s", err.Error())
 				}
 
-				/*
-					     mixed sorting sc_results
-
-						 examples:
-							delegate - 44b7729c15b4ae36e56d742ed81d2510a347033f73e9c5db2d117917c4996a13
-							unDelegate - 596155353284baf98a5b9a539ab941898ac58c36f8ce54c642af5b264aac8338
-							reDelegateRewards 10c8d8f23973ff3a00ae86fc0f4b6ae2a70105d46ecdb702cabfdd99e27363d4
-							claimRewards - 743c6d62f0037d876e3f41284e8af2595ce5d63bc0b1bf08281b36f182c3bb83
-							unStake - d10adba96c063a55c1b369094073c41ae57286fab53c25cf8489d9c4c4ffbb18
-							stake - 7c7db6eea2b3f2aef9875f91300e149b5b379d86456110eca57545f3aa087886
-							unBond - c6c32820df1b44af828121d52207904c53230e9dd3a794e90e714915a68806d4
-
-				*/
 				if tx.Status != dmodels.TxStatusSuccess {
 					continue
 				}
@@ -266,7 +263,10 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 				txType := string(decodedBytes)
 				switch txType {
 				case "withdraw":
-					// todo claim undelegated value
+					err = d.parseWithdraw(tx, mbTx.Hash, t)
+					if err != nil {
+						return d, fmt.Errorf("parseWithdraw: %s", err.Error())
+					}
 				case "stake":
 					err = d.parseStake(tx, mbTx.Hash, t)
 					if err != nil {
@@ -298,9 +298,6 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 							return d, fmt.Errorf("parseUnbond: %s", err.Error())
 						}
 					}
-					if strings.Contains(txType, "relayedTx") {
-						//fmt.Println(txType, mbTx.Hash)
-					}
 					if strings.Contains(txType, "unDelegate") {
 						err = d.parseUndelegations(tx, mbTx.Hash, txType, t)
 						if err != nil {
@@ -312,9 +309,6 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 						if err != nil {
 							return d, fmt.Errorf("parseUnstake: %s", err.Error())
 						}
-					}
-					if strings.Contains(txType, "reStakeRewards") { // check existence of reStakeRewards tx
-						fmt.Println(txType, mbTx.Hash)
 					}
 				}
 			}
@@ -475,6 +469,32 @@ func (d *data) parseStake(tx node.Tx, txHash string, t time.Time) error {
 	return nil
 }
 
+func (d *data) parseWithdraw(tx node.Tx, txHash string, t time.Time) error {
+	findOK := false
+	var amount decimal.Decimal
+	for _, result := range tx.SmartContractResults {
+		if result.Data == msgOKBase64 || result.Data == msgOKHex {
+			findOK = true
+		}
+		if result.Receiver == tx.Sender {
+			amount = node.ValueToEGLD(result.Value)
+		}
+	}
+	if !findOK {
+		return nil
+	}
+	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
+		TxHash:    txHash,
+		Type:      dmodels.WithdrawEventType,
+		Validator: tx.Receiver,
+		Delegator: tx.Sender,
+		Epoch:     tx.Epoch,
+		Amount:    amount,
+		CreatedAt: t,
+	})
+	return nil
+}
+
 func (d *data) parseUnstake(tx node.Tx, txType string, txHash string, t time.Time) error {
 	if !checkSCResults(tx.SmartContractResults, 1) {
 		fmt.Printf("parseUnstake: checkSCResults: false (tx: %s) \n", txHash)
@@ -594,6 +614,7 @@ func (p *Parser) saving() {
 			singleData.rewards = append(singleData.rewards, item.rewards...)
 			singleData.stakeEvents = append(singleData.stakeEvents, item.stakeEvents...)
 		}
+		p.updateStakeStates(singleData.stakeEvents)
 		p.wg.Add(1)
 		var err error
 		for {

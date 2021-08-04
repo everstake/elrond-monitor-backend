@@ -18,12 +18,12 @@ func (s *ServiceFacade) GetAccounts(filter filters.Accounts) (items smodels.Pagi
 		accounts[i] = smodels.Account{
 			Address: a.Address,
 			// todo
-			Balance:         decimal.Decimal{},
-			Delegated:       decimal.Decimal{},
-			Undelegated:     decimal.Decimal{},
-			RewardsClaimed:  decimal.Decimal{},
-			StakingProvider: nil,
-			CreatedAt:       smodels.NewTime(a.CreatedAt),
+			Balance:          decimal.Decimal{},
+			Delegated:        decimal.Decimal{},
+			Undelegated:      decimal.Decimal{},
+			RewardsClaimed:   decimal.Decimal{},
+			StakingProviders: nil,
+			CreatedAt:        smodels.NewTime(a.CreatedAt),
 		}
 	}
 	total, err := s.dao.GetAccountsTotal(filter)
@@ -46,6 +46,14 @@ func (s *ServiceFacade) GetAccount(address string) (account smodels.Account, err
 	//if err != nil {
 	//	return account, fmt.Errorf("node.GetAccountDelegation: %s", err.Error())
 	//}
+	delegations := s.parser.GetDelegations(address)
+	var stakeProviders []smodels.AccountStakingProvider
+	for validator, stake := range delegations {
+		stakeProviders = append(stakeProviders, smodels.AccountStakingProvider{
+			Provider: validator,
+			Stake:    stake,
+		})
+	}
 	return smodels.Account{
 		Address: address,
 		Balance: node.ValueToEGLD(acc.Balance),
@@ -53,8 +61,8 @@ func (s *ServiceFacade) GetAccount(address string) (account smodels.Account, err
 		//Delegated:        node.ValueToEGLD(delegation.UserActiveStake),
 		//Undelegated:      node.ValueToEGLD(delegation.UserUnstakedStake),
 		//ClaimableRewards: node.ValueToEGLD(delegation.ClaimableRewards),
-		RewardsClaimed:  decimal.Decimal{},
-		StakingProvider: nil,
-		CreatedAt:       smodels.NewTime(dAcc.CreatedAt),
+		RewardsClaimed:   decimal.Decimal{},
+		StakingProviders: stakeProviders,
+		CreatedAt:        smodels.NewTime(dAcc.CreatedAt),
 	}, nil
 }

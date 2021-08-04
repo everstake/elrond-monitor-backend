@@ -61,42 +61,6 @@ paths:
                     type: number
                   left:
                     type: number
-  /accounts/range:
-    get:
-      tags:
-        - Network
-      summary: Get daily total accounts
-      parameters:
-        - in: query
-          name: limit
-          required: false
-          schema:
-            type: number
-      responses:
-        200:
-          description: "Success"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/rangeData'
-  /transactions/range:
-    get:
-      tags:
-        - Network
-      summary: Get daily total transactions
-      parameters:
-        - in: query
-          name: limit
-          required: false
-          schema:
-            type: number
-      responses:
-        200:
-          description: "Success"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/rangeData'
   /accounts:
     get:
       parameters:
@@ -329,7 +293,7 @@ paths:
                 type: object
                 properties:
                   count:
-                    type: string
+                    type: number
                   items:
                     type: array
                     items:
@@ -525,7 +489,114 @@ paths:
                     timestamp: 1623945181 }
         404:
           description: "Not found"
-
+  /stake/events:
+    get:
+      parameters:
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: validator
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: delegator
+          required: false
+          schema:
+            type: string
+      tags:
+        - "Staking"
+      summary: get block by hash
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: number
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        tx_hash:
+                          type: string
+                        type:
+                          type: string
+                        validator:
+                          type: string
+                        delegator:
+                          type: string
+                        epoch:
+                          type: number
+                        amount:
+                          type: number
+                        created_at:
+                          type: number
+                      example:
+                        { tx_hash: "54a335f6a103a2e6dfca30f03c436451507a6f7efe6c3358199f55f449587110",
+                          type: "delegate",
+                          validator: "erd1qqqqqqqqqqqqqqqpqqqqqqqqqqqqqqqqqqqqqqqqqqqqqphllllsndz99p",
+                          delegator: "erd1nly3kcxggphf78d3aqmne5amp0zgwmx7glq2d9p50l3krmqk3trq7e2fld",
+                          amount: 123,
+                          created_at: 1627476960 }
+        404:
+          description: "Not found"
+  /validators/map:
+    get:
+      tags:
+        - Statistics
+      summary: Get map of validators
+      responses:
+        200:
+          description: "Success"
+  /accounts/range:
+    get:
+      tags:
+        - Statistics
+      summary: Get daily total accounts
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rangeData'
+  /transactions/range:
+    get:
+      tags:
+        - Statistics
+      summary: Get daily total transactions
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rangeData'
 components:
   schemas:
     tx:

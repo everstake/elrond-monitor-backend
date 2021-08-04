@@ -116,6 +116,12 @@ func (db Postgres) GetBlock(hash string) (block dmodels.Block, err error) {
 
 func (db Postgres) GetBlocksTotal(filter filters.Blocks) (total uint64, err error) {
 	q := squirrel.Select("count(*) as total").From(dmodels.BlocksTable)
+	if len(filter.Shard) != 0 {
+		q = q.Where(squirrel.Eq{"blk_shard": filter.Shard})
+	}
+	if filter.Nonce != 0 {
+		q = q.Where(squirrel.Eq{"blk_nonce": filter.Nonce})
+	}
 	err = db.first(&total, q)
 	return total, err
 }

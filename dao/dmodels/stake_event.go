@@ -28,3 +28,9 @@ type StakeEvent struct {
 	Amount    decimal.Decimal `db:"ste_amount"`
 	CreatedAt time.Time       `db:"ste_created_at"`
 }
+
+type StakeState struct {
+	Validator string          `db:"validator"`
+	Delegator string          `db:"delegator"`
+	Amount    decimal.Decimal `db:"amount"`
+}
