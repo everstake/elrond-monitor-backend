@@ -8,6 +8,6 @@ type Block struct {
 	TxCount    uint64   `json:"tx_count"`
 	Size       uint64   `json:"size"`
 	Proposer   string   `json:"proposer"`
-	Miniblocks []string `json:"miniblocks,omitempty"`
+	Miniblocks []string `json:"miniblocks"`
 	Timestamp  Time     `json:"timestamp"`
 }

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"github.com/everstake/elrond-monitor-backend/config"
 	"github.com/everstake/elrond-monitor-backend/dao"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
@@ -29,16 +30,23 @@ type (
 	}
 
 	ServiceFacade struct {
-		dao  dao.DAO
-		cfg  config.Config
-		node node.APIi
+		dao           dao.DAO
+		cfg           config.Config
+		node          node.APIi
+		networkConfig node.NetworkConfig
 	}
 )
 
 func NewServices(d dao.DAO, cfg config.Config) (svc Services, err error) {
+	n := node.NewAPI(cfg.Parser.Node)
+	nCfg, err := n.GetNetworkConfig()
+	if err != nil {
+		return nil, fmt.Errorf("GetNetworkConfig: %s", err.Error())
+	}
 	return &ServiceFacade{
-		dao:  d,
-		cfg:  cfg,
-		node: node.NewAPI(cfg.Parser.Node),
+		dao:           d,
+		cfg:           cfg,
+		node:          n,
+		networkConfig: nCfg,
 	}, nil
 }

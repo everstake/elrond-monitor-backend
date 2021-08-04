@@ -22,6 +22,7 @@ const (
 	transactionEndpoint          = "/transaction/%s?withResults=true"
 	addressEndpoint              = "/address/%s"
 	networkStatusEndpoint        = "/network/status/%d"
+	networkConfigEndpoint        = "/network/config"
 	validatorStatisticsEndpoint  = "/validator/statistics"
 	heartbeatstatusEndpoint      = "/node/heartbeatstatus"
 	networkEconomicsEndpoint     = "/network/economics"
@@ -51,6 +52,7 @@ type (
 		GetValidatorStatistics() (statistics ValidatorStatistics, err error)
 		GetHeartbeatStatus() (status HeartbeatStatus, err error)
 		GetNetworkEconomics() (ne NetworkEconomics, err error)
+		GetNetworkConfig() (ne NetworkConfig, err error)
 	}
 )
 
@@ -111,6 +113,11 @@ func (api *API) GetTransaction(hash string) (tx Tx, err error) {
 
 func (api *API) GetNetworkEconomics() (ne NetworkEconomics, err error) {
 	err = api.get(networkEconomicsEndpoint, &ne, "metrics")
+	return ne, err
+}
+
+func (api *API) GetNetworkConfig() (ne NetworkConfig, err error) {
+	err = api.get(networkConfigEndpoint, &ne, "config")
 	return ne, err
 }
 

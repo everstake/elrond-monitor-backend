@@ -161,4 +161,25 @@ type (
 		ErdTotalSupply           decimal.Decimal `json:"erd_total_supply"`
 		ErdTotalTopUpValue       decimal.Decimal `json:"erd_total_top_up_value"`
 	}
+
+	NetworkConfig struct {
+		ErdChainID                   string `json:"erd_chain_id"`
+		ErdDenomination              int64  `json:"erd_denomination"`
+		ErdGasPerDataByte            int64  `json:"erd_gas_per_data_byte"`
+		ErdGasPriceModifier          string `json:"erd_gas_price_modifier"`
+		ErdLatestTagSoftwareVersion  string `json:"erd_latest_tag_software_version"`
+		ErdMetaConsensusGroupSize    int64  `json:"erd_meta_consensus_group_size"`
+		ErdMinGasLimit               int64  `json:"erd_min_gas_limit"`
+		ErdMinGasPrice               int64  `json:"erd_min_gas_price"`
+		ErdMinTransactionVersion     int64  `json:"erd_min_transaction_version"`
+		ErdNumMetachainNodes         int64  `json:"erd_num_metachain_nodes"`
+		ErdNumNodesInShard           int64  `json:"erd_num_nodes_in_shard"`
+		ErdNumShardsWithoutMeta      int64  `json:"erd_num_shards_without_meta"`
+		ErdRewardsTopUpGradientPoint string `json:"erd_rewards_top_up_gradient_point"`
+		ErdRoundDuration             uint64 `json:"erd_round_duration"`
+		ErdRoundsPerEpoch            uint64 `json:"erd_rounds_per_epoch"`
+		ErdShardConsensusGroupSize   int64  `json:"erd_shard_consensus_group_size"`
+		ErdStartTime                 uint64 `json:"erd_start_time"`
+		ErdTopUpFactor               string `json:"erd_top_up_factor"`
+	}
 )

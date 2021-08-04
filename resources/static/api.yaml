@@ -55,7 +55,11 @@ paths:
                     type: number
                   nonce:
                     type: number
-                  rounds_per_epoch:
+                  percent:
+                    type: number
+                  start:
+                    type: number
+                  end:
                     type: number
   /accounts/range:
     get:
