@@ -3,7 +3,9 @@ package services
 import (
 	"fmt"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
+	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/everstake/elrond-monitor-backend/smodels"
+	"github.com/shopspring/decimal"
 )
 
 func (s *ServiceFacade) GetTransactions(filter filters.Transactions) (items smodels.Pagination, err error) {
@@ -19,12 +21,9 @@ func (s *ServiceFacade) GetTransactions(filter filters.Transactions) (items smod
 			From:          tx.Sender,
 			To:            tx.Receiver,
 			Value:         tx.Value,
-			Fee:           tx.Fee,
-			GasUsed:       tx.GasUsed,
 			MiniblockHash: tx.MiniBlockHash,
 			ShardFrom:     tx.SenderShard,
 			ShardTo:       tx.ReceiverShard,
-			Type:          "", // todo
 			Timestamp:     smodels.NewTime(tx.CreatedAt),
 		}
 	}
@@ -58,19 +57,29 @@ func (s *ServiceFacade) GetTransaction(hash string) (tx smodels.Tx, err error) {
 			Message: r.Message,
 		}
 	}
+	esTx, err := s.es.GetTx(hash)
+	if err != nil {
+		return tx, fmt.Errorf("es.GetTx: %s", err.Error())
+	}
+	fee, err := decimal.NewFromString(esTx.Fee)
+	if err != nil {
+		return tx, fmt.Errorf("decimal.NewFromString(%s): %s", esTx.Fee, err.Error())
+	}
 	return smodels.Tx{
 		Hash:          dTx.Hash,
 		Status:        dTx.Status,
 		From:          dTx.Sender,
 		To:            dTx.Receiver,
 		Value:         dTx.Value,
-		Fee:           dTx.Fee,
-		GasUsed:       dTx.GasUsed,
+		Fee:           node.ValueToEGLD(fee),
+		GasUsed:       esTx.GasUsed,
+		GasPrice:      esTx.GasPrice,
 		MiniblockHash: dTx.MiniBlockHash,
 		ShardFrom:     dTx.SenderShard,
 		ShardTo:       dTx.ReceiverShard,
 		Type:          "", // todo
 		ScResults:     results,
+		Signature:     esTx.Signature,
 		Timestamp:     smodels.NewTime(dTx.CreatedAt),
 	}, nil
 }

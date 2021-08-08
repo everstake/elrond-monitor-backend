@@ -65,13 +65,11 @@ create table transactions
     trn_status          tx_status       not null,
     mlk_mini_block_hash varchar(64)     not null,
     trn_value           numeric(36, 18) not null,
-    trn_fee             numeric(36, 18) not null,
     trn_sender          varchar(62)     not null,
     trn_sender_shard    bigint          not null,
     trn_receiver        varchar(62)     not null,
     trn_receiver_shard  bigint          not null,
     trn_gas_price       numeric         not null,
-    trn_gas_used        numeric         not null,
     trn_nonce           integer         not null,
     trn_data            text            not null,
     trn_created_at      timestamp       not null

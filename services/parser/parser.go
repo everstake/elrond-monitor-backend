@@ -63,7 +63,7 @@ func NewParser(cfg config.Config, d dao.DAO) *Parser {
 	return &Parser{
 		cfg:       cfg,
 		dao:       d,
-		node:      node.NewAPI(cfg.Parser.Node),
+		node:      node.NewAPI(cfg.Parser.Node, cfg.Contracts),
 		fetcherCh: make(chan uint64, fetcherChBuffer),
 		saverCh:   make(chan data, saverChBuffer),
 		accounts:  make(map[string]struct{}),
@@ -227,13 +227,11 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 					Status:        tx.Status,
 					MiniBlockHash: tx.MiniblockHash,
 					Value:         node.ValueToEGLD(amount),
-					Fee:           decimal.Zero, // todo
 					Sender:        tx.Sender,
 					SenderShard:   tx.SourceShard,
 					Receiver:      tx.Receiver,
 					ReceiverShard: tx.DestinationShard,
 					GasPrice:      tx.GasPrice,
-					GasUsed:       0, // todo
 					Nonce:         tx.Nonce,
 					Data:          tx.Data,
 					CreatedAt:     t,

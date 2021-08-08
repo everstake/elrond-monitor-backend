@@ -13,12 +13,20 @@
     "SSLMode": "disable"
   },
   "MarketProvider": {
-    "Title": "cmc",
-    "APIKey": "https://api.elrond.com"
+    "Title": "coingecko",
+    "APIKey": ""
+  },
+  "ElasticSearch": {
+    "Address": "https://index.elrond.com"
   },
   "Parser": {
-    "Node": "",
-    "Batch": 100,
+    "Node": "https://api.elrond.com",
+    "Batch": 10,
     "Fetchers": 1
+  },
+  "Contracts": {
+    "Staking": "erd1qqqqqqqqqqqqqqqpqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqllls0lczs7",
+    "DelegationManager": "erd1qqqqqqqqqqqqqqqpqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqylllslmq6y6",
+    "Delegation": "erd1qqqqqqqqqqqqqpgqxwakt2g7u9atsnr03gqcgmhcv38pt7mkd94q6shuwt"
   }
 }

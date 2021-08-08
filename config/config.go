@@ -13,8 +13,10 @@ type (
 	Config struct {
 		API            API
 		Postgres       Postgres
+		ElasticSearch  ElasticSearch
 		MarketProvider MarketProvider
 		Parser         Parser
+		Contracts      Contracts
 	}
 	API struct {
 		ListenOnPort       uint16
@@ -35,6 +37,14 @@ type (
 		Node     string
 		Batch    uint64
 		Fetchers uint64
+	}
+	ElasticSearch struct {
+		Address string
+	}
+	Contracts struct {
+		Staking           string
+		DelegationManager string
+		Delegation        string
 	}
 )
 

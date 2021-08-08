@@ -29,22 +29,42 @@ func (s *ServiceFacade) GetBlock(hash string) (block smodels.Block, err error) {
 		}
 		miniBlocksHashes[i] = b.Hash
 	}
-	//extraData, err := s.node.GetExtraDataBlock(dBlock.Hash)
-	//if err != nil {
-	//	return block, fmt.Errorf("node.GetExtraDataBlock: %s", err.Error())
-	//}
+	esBlock, err := s.es.GetBlock(hash)
+	if err != nil {
+		return block, fmt.Errorf("es.GetBlock: %s", err.Error())
+	}
+	esValidatorsKeys, err := s.es.ValidatorsKeys(dBlock.Shard, dBlock.Epoch)
+	if err != nil {
+		return block, fmt.Errorf("es.ValidatorsKeys: %s", err.Error())
+	}
+	validatorsKeys := make([]string, len(esValidatorsKeys.PublicKeys))
+	for i, key := range esBlock.Validators {
+		validatorsKeys[i] = validatorKeyByIndex(esValidatorsKeys.PublicKeys, key)
+	}
 	block = smodels.Block{
-		Hash:    dBlock.Hash,
-		Nonce:   dBlock.Nonce,
-		Shard:   dBlock.Shard,
-		Epoch:   dBlock.Epoch,
-		TxCount: dBlock.NumTxs,
-		//Size:       extraData.Size,
-		//Proposer:   extraData.Proposer,
-		Miniblocks: miniBlocksHashes,
-		Timestamp:  smodels.NewTime(dBlock.CreatedAt),
+		Hash:                  dBlock.Hash,
+		Nonce:                 dBlock.Nonce,
+		Shard:                 dBlock.Shard,
+		Epoch:                 dBlock.Epoch,
+		TxCount:               dBlock.NumTxs,
+		Size:                  esBlock.Size,
+		Proposer:              validatorKeyByIndex(esValidatorsKeys.PublicKeys, esBlock.Proposer),
+		Miniblocks:            miniBlocksHashes,
+		NotarizedBlocksHashes: esBlock.NotarizedBlocksHashes,
+		Validators:            validatorsKeys,
+		PubKeyBitmap:          esBlock.PubKeyBitmap,
+		StateRootHash:         esBlock.StateRootHash,
+		PrevHash:              esBlock.PrevHash,
+		Timestamp:             smodels.NewTime(dBlock.CreatedAt),
 	}
 	return block, nil
+}
+
+func validatorKeyByIndex(keys []string, index uint64) string {
+	if uint64(len(keys)) <= index {
+		return ""
+	}
+	return keys[index]
 }
 
 func (s *ServiceFacade) GetBlocks(filter filters.Blocks) (items smodels.Pagination, err error) {
@@ -105,8 +125,6 @@ func (s *ServiceFacade) GetMiniBlock(hash string) (block smodels.Miniblock, err 
 			From:          tx.Sender,
 			To:            tx.Receiver,
 			Value:         tx.Value,
-			Fee:           tx.Fee,
-			GasUsed:       tx.GasUsed,
 			MiniblockHash: tx.MiniBlockHash,
 			ShardFrom:     tx.SenderShard,
 			ShardTo:       tx.ReceiverShard,

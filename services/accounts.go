@@ -16,14 +16,8 @@ func (s *ServiceFacade) GetAccounts(filter filters.Accounts) (items smodels.Pagi
 	accounts := make([]smodels.Account, len(dAccounts))
 	for i, a := range dAccounts {
 		accounts[i] = smodels.Account{
-			Address: a.Address,
-			// todo
-			Balance:          decimal.Decimal{},
-			Delegated:        decimal.Decimal{},
-			Undelegated:      decimal.Decimal{},
-			RewardsClaimed:   decimal.Decimal{},
-			StakingProviders: nil,
-			CreatedAt:        smodels.NewTime(a.CreatedAt),
+			Address:   a.Address,
+			CreatedAt: smodels.NewTime(a.CreatedAt),
 		}
 	}
 	total, err := s.dao.GetAccountsTotal(filter)
@@ -42,10 +36,14 @@ func (s *ServiceFacade) GetAccount(address string) (account smodels.Account, err
 		return account, fmt.Errorf("node.GetAddress: %s", err.Error())
 	}
 	dAcc, _ := s.dao.GetAccount(address)
-	//delegation, err := s.node.GetAccountDelegation(address)
-	//if err != nil {
-	//	return account, fmt.Errorf("node.GetAccountDelegation: %s", err.Error())
-	//}
+	userStake, err := s.node.GetUserStake(address)
+	if err != nil {
+		return account, fmt.Errorf("node.GetUserStake: %s", err.Error())
+	}
+	claimableRewards, err := s.node.GetClaimableRewards(address)
+	if err != nil {
+		return account, fmt.Errorf("node.GetClaimableRewards: %s", err.Error())
+	}
 	delegations := s.parser.GetDelegations(address)
 	var stakeProviders []smodels.AccountStakingProvider
 	for validator, stake := range delegations {
@@ -55,13 +53,13 @@ func (s *ServiceFacade) GetAccount(address string) (account smodels.Account, err
 		})
 	}
 	return smodels.Account{
-		Address: address,
-		Balance: node.ValueToEGLD(acc.Balance),
-		Nonce:   acc.Nonce,
-		//Delegated:        node.ValueToEGLD(delegation.UserActiveStake),
-		//Undelegated:      node.ValueToEGLD(delegation.UserUnstakedStake),
-		//ClaimableRewards: node.ValueToEGLD(delegation.ClaimableRewards),
-		RewardsClaimed:   decimal.Decimal{},
+		Address:          address,
+		Balance:          node.ValueToEGLD(acc.Balance),
+		Nonce:            acc.Nonce,
+		Delegated:        node.ValueToEGLD(userStake.ActiveStake),
+		Undelegated:      node.ValueToEGLD(userStake.UnstakedStake),
+		RewardsClaimed:   decimal.Zero, // todo
+		ClaimableRewards: node.ValueToEGLD(claimableRewards),
 		StakingProviders: stakeProviders,
 		CreatedAt:        smodels.NewTime(dAcc.CreatedAt),
 	}, nil

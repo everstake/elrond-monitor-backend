@@ -182,4 +182,24 @@ type (
 		ErdStartTime                 uint64 `json:"erd_start_time"`
 		ErdTopUpFactor               string `json:"erd_top_up_factor"`
 	}
+
+	ContractResp struct {
+		ReturnData    []string `json:"returnData"`
+		ReturnCode    string   `json:"returnCode"`
+		ReturnMessage string   `json:"returnMessage"`
+	}
+
+	ContractReq struct {
+		SCAddress string   `json:"scAddress"`
+		FuncName  string   `json:"funcName"`
+		Args      []string `json:"args"`
+	}
+
+	UserStake struct {
+		WithdrawOnlyStake    decimal.Decimal
+		WaitingStake         decimal.Decimal
+		ActiveStake          decimal.Decimal
+		UnstakedStake        decimal.Decimal
+		DeferredPaymentStake decimal.Decimal
+	}
 )

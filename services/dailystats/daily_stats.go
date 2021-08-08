@@ -44,7 +44,7 @@ func NewDailyStats(cfg config.Config, d dao.DAO) (*DailyStats, error) {
 	}
 	ds := &DailyStats{
 		dao:     d,
-		node:    node.NewAPI(cfg.Parser.Node),
+		node:    node.NewAPI(cfg.Parser.Node, cfg.Contracts),
 		stopSig: make(chan struct{}),
 		market:  m,
 	}
