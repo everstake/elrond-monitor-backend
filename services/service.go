@@ -30,6 +30,9 @@ type (
 		UpdateValidatorsMap()
 		GetValidatorsMap() ([]byte, error)
 		GetStakeEvents(filter filters.StakeEvents) (items smodels.Pagination, err error)
+		GetStakingProviders() (providers []smodels.StakingProvider, err error)
+		GetStakingProvider(address string) (provider smodels.StakingProvider, err error)
+		UpdateStakingProviders()
 	}
 	parser interface {
 		GetDelegations(delegator string) map[string]decimal.Decimal

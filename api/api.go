@@ -110,6 +110,8 @@ func (api *API) loadRoutes() {
 		{Path: "/epoch", Method: http.MethodGet, Func: api.GetEpoch},
 		{Path: "/validators/map", Method: http.MethodGet, Func: api.GetValidatorsMap},
 		{Path: "/stake/events", Method: http.MethodGet, Func: api.GetStakeEvents},
+		{Path: "/staking/providers", Method: http.MethodGet, Func: api.GetStakingProviders},
+		{Path: "/staking/provider/{address}", Method: http.MethodGet, Func: api.GetStakingProvider},
 	})
 
 }

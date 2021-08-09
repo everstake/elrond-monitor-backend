@@ -94,6 +94,7 @@ func (p *Parser) Run() error {
 		networkStatus, err := p.node.GetNetworkStatus(node.MetaChainShardIndex)
 		if err != nil {
 			log.Error("Parser: node.GetMaxHeight: %s", err.Error())
+			<-time.After(time.Second)
 			continue
 		}
 		latestBlock := networkStatus.ErdNonce
