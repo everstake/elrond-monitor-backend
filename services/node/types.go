@@ -117,7 +117,8 @@ type (
 		TxCount  uint64          `json:"tx_count"`
 	}
 
-	ValidatorStatistics map[string]struct {
+	ValidatorStatistics map[string]ValidatorStatistic
+	ValidatorStatistic  struct {
 		TempRating                         float64 `json:"tempRating"`
 		NumLeaderSuccess                   int64   `json:"numLeaderSuccess"`
 		NumLeaderFailure                   int64   `json:"numLeaderFailure"`
@@ -192,6 +193,7 @@ type (
 	ContractReq struct {
 		SCAddress string   `json:"scAddress"`
 		FuncName  string   `json:"funcName"`
+		Caller    string   `json:"caller"`
 		Args      []string `json:"args"`
 	}
 
@@ -201,5 +203,17 @@ type (
 		ActiveStake          decimal.Decimal
 		UnstakedStake        decimal.Decimal
 		DeferredPaymentStake decimal.Decimal
+	}
+
+	ProviderConfig struct {
+		Owner         string
+		ServiceFee    decimal.Decimal
+		DelegationCap decimal.Decimal
+	}
+
+	ProviderMeta struct {
+		Name      string
+		Website   string
+		Iidentity string
 	}
 )

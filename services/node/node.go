@@ -58,11 +58,16 @@ type (
 		GetAddress(address string) (resp Address, err error)
 		GetNetworkStatus(shardID uint64) (status NetworkStatus, err error)
 		GetValidatorStatistics() (statistics ValidatorStatistics, err error)
-		GetHeartbeatStatus() (status HeartbeatStatus, err error)
+		GetHeartbeatStatus() (status []HeartbeatStatus, err error)
 		GetNetworkEconomics() (ne NetworkEconomics, err error)
 		GetNetworkConfig() (ne NetworkConfig, err error)
 		GetUserStake(address string) (us UserStake, err error)
 		GetClaimableRewards(address string) (reward decimal.Decimal, err error)
+		GetProviderAddresses() (addresses []string, err error)
+		GetProviderConfig(provider string) (config ProviderConfig, err error)
+		GetProviderMeta(provider string) (config ProviderMeta, err error)
+		GetProviderNumUsers(provider string) (count uint64, err error)
+		GetCumulatedRewards(provider string) (amount decimal.Decimal, err error)
 	}
 )
 
@@ -111,7 +116,7 @@ func (api *API) GetValidatorStatistics() (statistics ValidatorStatistics, err er
 	return statistics, err
 }
 
-func (api *API) GetHeartbeatStatus() (status HeartbeatStatus, err error) {
+func (api *API) GetHeartbeatStatus() (status []HeartbeatStatus, err error) {
 	err = api.get(heartbeatstatusEndpoint, &status, "heartbeats")
 	return status, err
 }
@@ -172,6 +177,109 @@ func (api *API) GetClaimableRewards(address string) (reward decimal.Decimal, err
 	}
 	reward, _ = ContractValueToDecimal(data[0])
 	return reward, err
+}
+
+func (api *API) GetProviderAddresses() (addresses []string, err error) {
+	rows, err := api.contractCall(ContractReq{
+		SCAddress: api.contracts.DelegationManager,
+		FuncName:  "getAllContractAddresses",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("contractCall: %s", err.Error())
+	}
+	addresses = make([]string, len(rows))
+	for i, row := range rows {
+		addresses[i], err = base64ToAddress(row)
+		if err != nil {
+			return nil, fmt.Errorf("base64ToAddress: %s", err.Error())
+		}
+	}
+	return addresses, nil
+}
+
+func (api *API) GetProviderConfig(provider string) (config ProviderConfig, err error) {
+	rows, err := api.contractCall(ContractReq{
+		SCAddress: provider,
+		FuncName:  "getContractConfig",
+	})
+	if err != nil {
+		return config, fmt.Errorf("contractCall: %s", err.Error())
+	}
+	if len(rows) < 3 {
+		return config, fmt.Errorf("len(rows) < 3")
+	}
+	owner, err := base64ToAddress(rows[0])
+	if err != nil {
+		return config, fmt.Errorf("base64ToAddress: %s", err.Error())
+	}
+	serviceFee, err := ContractValueToDecimal(rows[1])
+	if err != nil {
+		return config, fmt.Errorf("ContractValueToDecimal: %s", err.Error())
+	}
+	delegationCap, err := ContractValueToDecimal(rows[2])
+	if err != nil {
+		return config, fmt.Errorf("ContractValueToDecimal: %s", err.Error())
+	}
+	return ProviderConfig{
+		Owner:         owner,
+		ServiceFee:    serviceFee,
+		DelegationCap: delegationCap,
+	}, nil
+}
+
+func (api *API) GetProviderMeta(provider string) (config ProviderMeta, err error) {
+	rows, err := api.contractCall(ContractReq{
+		SCAddress: provider,
+		FuncName:  "getMetaData",
+	})
+	if err != nil {
+		return config, fmt.Errorf("contractCall: %s", err.Error())
+	}
+	if len(rows) != 3 {
+		return config, fmt.Errorf("len(rows) != 3")
+	}
+	return ProviderMeta{
+		Name:      mustB64Decode(rows[0]),
+		Website:   mustB64Decode(rows[1]),
+		Iidentity: mustB64Decode(rows[2]),
+	}, nil
+}
+
+func (api *API) GetProviderNumUsers(provider string) (count uint64, err error) {
+	rows, err := api.contractCall(ContractReq{
+		SCAddress: provider,
+		FuncName:  "getNumUsers",
+	})
+	if err != nil {
+		return count, fmt.Errorf("contractCall: %s", err.Error())
+	}
+	if len(rows) != 1 {
+		return count, fmt.Errorf("len(rows) != 1")
+	}
+	v, err := ContractValueToDecimal(rows[0])
+	if err != nil {
+		return count, fmt.Errorf("ContractValueToDecimal: %s", err.Error())
+	}
+	return v.BigInt().Uint64(), nil
+}
+
+func (api *API) GetCumulatedRewards(provider string) (amount decimal.Decimal, err error) {
+	rows, err := api.contractCall(ContractReq{
+		SCAddress: provider,
+		FuncName:  "getTotalCumulatedRewards",
+		Caller:    "erd1qqqqqqqqqqqqqqqpqqqqqqqqlllllllllllllllllllllllllllsr9gav8",
+	})
+	if err != nil {
+		return amount, fmt.Errorf("contractCall: %s", err.Error())
+	}
+	if len(rows) != 1 {
+		return amount, fmt.Errorf("len(rows) != 1")
+	}
+	amount, err = ContractValueToDecimal(rows[0])
+	if err != nil {
+		return amount, fmt.Errorf("ContractValueToDecimal: %s", err.Error())
+	}
+	return amount, nil
 }
 
 func (api *API) contractCall(req ContractReq) (data []string, err error) {
@@ -266,11 +374,30 @@ func addressToHex(adr string) (hexAddress string, err error) {
 	if err != nil {
 		return hexAddress, fmt.Errorf("bech32.Decode: %s", err.Error())
 	}
-
 	decodedBytes, err := bech32.ConvertBits(buff, 5, 8, false)
 	if err != nil {
 		return hexAddress, fmt.Errorf("bech32.ConvertBits: %s", err.Error())
 	}
-
 	return hex.EncodeToString(decodedBytes), nil
+}
+
+func base64ToAddress(b64 string) (address string, err error) {
+	data, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		return address, fmt.Errorf("base64.DecodeString: %s", err.Error())
+	}
+	conv, err := bech32.ConvertBits(data, 8, 5, true)
+	if err != nil {
+		return address, fmt.Errorf("bech32.ConvertBits: %s", err.Error())
+	}
+	converted, err := bech32.Encode("erd", conv)
+	if err != nil {
+		return address, fmt.Errorf("bech32.Encode: %s", err.Error())
+	}
+	return converted, nil
+}
+
+func mustB64Decode(b64 string) string {
+	r, _ := base64.StdEncoding.DecodeString(b64)
+	return string(r)
 }

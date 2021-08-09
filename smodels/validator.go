@@ -19,6 +19,21 @@ type Validator struct {
 }
 
 type StakingProvider struct {
+	Provider         string          `json:"provider"`
+	ServiceFee       decimal.Decimal `json:"service_fee"`
+	DelegationCap    decimal.Decimal `json:"delegation_cap"`
+	APR              float64         `json:"apr"`
+	NumUsers         uint64          `json:"num_users"`
+	CumulatedRewards decimal.Decimal `json:"cumulated_rewards"`
+	Identity         string          `json:"identity"`
+	NumNodes         uint64          `json:"num_nodes"`
+	Stake            decimal.Decimal `json:"stake"`
+	TopUp            decimal.Decimal `json:"top_up"`
+	Locked           decimal.Decimal `json:"locked"`
+	Featured         bool            `json:"featured"`
+}
+
+type SourceStakingProvider struct {
 	Identity struct {
 		Key         string `json:"key"`
 		Name        string `json:"name"`
@@ -39,7 +54,7 @@ type StakingProvider struct {
 	CheckCapOnRedelegate               bool            `json:"checkCapOnRedelegate"`
 	CreatedNonce                       uint64          `json:"createdNonce"`
 	UnBondPeriod                       uint64          `json:"unBondPeriod"`
-	Apr                                decimal.Decimal `json:"apr"`
+	Apr                                float64         `json:"apr"`
 	AprValue                           decimal.Decimal `json:"aprValue"`
 	TotalActiveStake                   decimal.Decimal `json:"totalActiveStake"`
 	TotalUnStaked                      decimal.Decimal `json:"totalUnStaked"`

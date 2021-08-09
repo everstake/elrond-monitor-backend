@@ -22,7 +22,7 @@ type (
 		GetMiniBlock(hash string) (block smodels.Miniblock, err error)
 		GetAccount(address string) (account smodels.Account, err error)
 		UpdateNodes() error
-		GetNodes(filter filters.Nodes) (nodes []node.HeartbeatStatus, err error)
+		GetNodes(filter filters.Nodes) (nodes []smodels.Node, err error)
 		UpdateStats()
 		GetStats() (stats smodels.Stats, err error)
 		GetDailyStats(filter filters.DailyStats) (items []smodels.RangeItem, err error)
