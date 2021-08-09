@@ -9,10 +9,10 @@ type Block struct {
 	Size                  int64    `json:"size"`
 	Proposer              string   `json:"proposer"`
 	Miniblocks            []string `json:"miniblocks"`
-	NotarizedBlocksHashes []string `json:"notarizedBlocksHashes"`
+	NotarizedBlocksHashes []string `json:"notarized_blocks_hashes"`
 	Validators            []string `json:"validators"`
-	PubKeyBitmap          string   `json:"pubKeyBitmap"`
-	StateRootHash         string   `json:"stateRootHash"`
-	PrevHash              string   `json:"prevHash"`
+	PubKeyBitmap          string   `json:"pub_key_bitmap"`
+	StateRootHash         string   `json:"state_root_hash"`
+	PrevHash              string   `json:"prev_hash"`
 	Timestamp             Time     `json:"timestamp"`
 }

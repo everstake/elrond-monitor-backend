@@ -21,7 +21,6 @@ func (db Postgres) CreateTransactions(transactions []dmodels.Transaction) error 
 		"trn_receiver",
 		"trn_receiver_shard",
 		"trn_gas_price",
-		"trn_gas_used",
 		"trn_nonce",
 		"trn_data",
 		"trn_created_at",

@@ -11,12 +11,13 @@ const ServiceName = "elrond-monitor-backend"
 
 type (
 	Config struct {
-		API            API
-		Postgres       Postgres
-		ElasticSearch  ElasticSearch
-		MarketProvider MarketProvider
-		Parser         Parser
-		Contracts      Contracts
+		API                    API
+		Postgres               Postgres
+		ElasticSearch          ElasticSearch
+		MarketProvider         MarketProvider
+		Parser                 Parser
+		Contracts              Contracts
+		StakingProvidersSource string
 	}
 	API struct {
 		ListenOnPort       uint16
@@ -72,7 +73,9 @@ func (config *Config) Validate() error {
 	if err != nil {
 		return err
 	}
-
+	if config.StakingProvidersSource == "" {
+		return fmt.Errorf("StakingProvidersSource is empty")
+	}
 	return config.Postgres.validate()
 }
 

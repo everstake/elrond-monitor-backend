@@ -61,9 +61,12 @@ func (s *ServiceFacade) GetTransaction(hash string) (tx smodels.Tx, err error) {
 	if err != nil {
 		return tx, fmt.Errorf("es.GetTx: %s", err.Error())
 	}
-	fee, err := decimal.NewFromString(esTx.Fee)
-	if err != nil {
-		return tx, fmt.Errorf("decimal.NewFromString(%s): %s", esTx.Fee, err.Error())
+	fee := decimal.Zero
+	if esTx.Fee != "" {
+		fee, err = decimal.NewFromString(esTx.Fee)
+		if err != nil {
+			return tx, fmt.Errorf("decimal.NewFromString(%s): %s", esTx.Fee, err.Error())
+		}
 	}
 	return smodels.Tx{
 		Hash:          dTx.Hash,

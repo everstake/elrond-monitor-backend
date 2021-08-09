@@ -24,6 +24,7 @@
     "Batch": 10,
     "Fetchers": 1
   },
+  "StakingProvidersSource": "https://internal-delegation-api.elrond.com/providers",
   "Contracts": {
     "Staking": "erd1qqqqqqqqqqqqqqqpqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqllls0lczs7",
     "DelegationManager": "erd1qqqqqqqqqqqqqqqpqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqylllslmq6y6",

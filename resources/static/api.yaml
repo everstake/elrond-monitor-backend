@@ -228,6 +228,8 @@ paths:
                     type: string
                   gas_used:
                     type: number
+                  gas_price:
+                    type: number
                   miniblock_hash:
                     type: string
                   timestamp:
@@ -257,6 +259,7 @@ paths:
                     value: "0.000035",
                     fee: "0.000035",
                     gas_used: 5000000200,
+                    gas_price: 1000000200,
                     miniblock_hash: "e51e2a60d7bb16ee587fe87a871f3de4840fe8bf152d3dc0d04deb94aff97692",
                     timestamp: 1623945181,
                     scResults: {
@@ -304,25 +307,19 @@ paths:
                         nonce:
                           type: number
                         shard:
-                          type: string
+                          type: number
                         epoch:
                           type: number
                         tx_count:
-                          type: string
-                        size:
-                          type: number
-                        proposer:
                           type: string
                         timestamp:
                           type: number
               example:
                 { count: 150000, items:[{ hash: "54a335f6a103a2e6dfca30f03c436451507a6f7efe6c3358199f55f449587110",
                                           nonce: 4646587,
-                                          shard: "Shard 2",
+                                          shard: 2,
                                           epoch: 322,
                                           tx_count: 4,
-                                          size: 1.345,
-                                          proposer: "Everstake",
                                           timestamp: 1623945181 }]}
         404:
           description: "Not found"
@@ -350,7 +347,7 @@ paths:
                   nonce:
                     type: number
                   shard:
-                    type: string
+                    type: number
                   epoch:
                     type: number
                   tx_count:
@@ -363,17 +360,36 @@ paths:
                     type: array
                     items:
                       type: string
+                  notarized_blocks_hashes:
+                    type: array
+                    items:
+                      type: string
+                  validators:
+                    type: array
+                    items:
+                      type: string
+                  pub_key_bitmap:
+                    type: string
+                  state_root_hash:
+                    type: string
+                  prev_hash:
+                    type: string
                   timestamp:
                     type: number
                 example:
                   { hash: "54a335f6a103a2e6dfca30f03c436451507a6f7efe6c3358199f55f449587110",
                     nonce: 4646587,
-                    shard: "Metachain",
+                    shard: 2,
                     epoch: 322,
                     tx_count: 4,
                     size: 1.345,
-                    proposer: "Everstake",
+                    proposer: "0f30adff8a88862f1435a337e5dd6677e645a873543ece58e466ba1dd4b5be842fc999bacb515119c59e2f0a37fc16191dcffe8f2809d934d44b826e9ec2a86face1d1a96644a8c0ed0018903903702e45e1d6d45b97c5ce13dbb0d6e6752203",
                     miniblocks: ["07f535e699544bc171d70567fcc6b84dd41e14aa56fd6e31b3f6e92226b4b56f", "dbcf0355784973891ba7b71ce53453846a12eb86f159a1100981a4b0efba2705"],
+                    notarized_blocks_hashes: ["1d70567fcc6b84dd41e", "dd41e14aa56fd6e31b3f6e9222"],
+                    validators: ["1d70567fcc6b84dd41e", "dd41e14aa56fd6e31b3f6e9222"],
+                    pub_key_bitmap: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                    state_root_hash: "9ecc1267ec10202635dce406d6aa83870803c77cc677d107a6758bb9493ac9dc",
+                    prev_hash: "bfa6d439a315e5c6bb8bcc51d6c227de726da7035bceb9913309c23641ccc66ebfa6d439a315e5c6bb8bcc51d6c227de726da7035bceb9913309c236",
                     timestamp: 1623945181 }
         404:
           description: "Not found"
@@ -406,7 +422,7 @@ paths:
                   nonce:
                     type: number
                   shard:
-                    type: string
+                    type: number
                   epoch:
                     type: number
                   tx_count:
@@ -419,17 +435,36 @@ paths:
                     type: array
                     items:
                       type: string
+                  notarized_blocks_hashes:
+                    type: array
+                    items:
+                      type: string
+                  validators:
+                    type: array
+                    items:
+                      type: string
+                  pub_key_bitmap:
+                    type: string
+                  state_root_hash:
+                    type: string
+                  prev_hash:
+                    type: string
                   timestamp:
                     type: number
                 example:
                   { hash: "54a335f6a103a2e6dfca30f03c436451507a6f7efe6c3358199f55f449587110",
                     nonce: 4646587,
-                    shard: "Metachain",
+                    shard: 2,
                     epoch: 322,
                     tx_count: 4,
                     size: 1.345,
-                    proposer: "Everstake",
+                    proposer: "0f30adff8a88862f1435a337e5dd6677e645a873543ece58e466ba1dd4b5be842fc999bacb515119c59e2f0a37fc16191dcffe8f2809d934d44b826e9ec2a86face1d1a96644a8c0ed0018903903702e45e1d6d45b97c5ce13dbb0d6e6752203",
                     miniblocks: ["07f535e699544bc171d70567fcc6b84dd41e14aa56fd6e31b3f6e92226b4b56f", "dbcf0355784973891ba7b71ce53453846a12eb86f159a1100981a4b0efba2705"],
+                    notarized_blocks_hashes: ["1d70567fcc6b84dd41e", "dd41e14aa56fd6e31b3f6e9222"],
+                    validators: ["1d70567fcc6b84dd41e", "dd41e14aa56fd6e31b3f6e9222"],
+                    pub_key_bitmap: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                    state_root_hash: "9ecc1267ec10202635dce406d6aa83870803c77cc677d107a6758bb9493ac9dc",
+                    prev_hash: "bfa6d439a315e5c6bb8bcc51d6c227de726da7035bceb9913309c23641ccc66ebfa6d439a315e5c6bb8bcc51d6c227de726da7035bceb9913309c236",
                     timestamp: 1623945181 }
         404:
           description: "Not found"
@@ -479,12 +514,11 @@ paths:
                     type: "TxBlock",
                     txs: [{ hash: "946def034e4bbb47d9669ceeaf180314171440f9e8ab6d46d843ddc091382fd8",
                             status: "pending",
-                            shard_from: "Shard 2",
-                            shard_to: "Shard 2",
+                            shard_from: 0,
+                            shard_to: 2,
                             from: "erd1xvmata3rkwmp4h4jxr5ngzzq2zm0p2ev6672xvj3mpmvj2zwlttq87uh9q",
                             to: "erd1c8v53mcdesz2svpmvglcc0rzgp0j4ckly3ge6fph43eqr49x3ntqx8jngl",
                             value: 0,
-                            fee: 0.000035,
                             timestamp: 1623945181 }],
                     timestamp: 1623945181 }
         404:
