@@ -10,6 +10,7 @@ const (
 	infoLvl  = "info"
 	debugLvl = "debug"
 	errorLvl = "error"
+	warnLvl  = "warn"
 )
 
 func Info(format string, args ...interface{}) {
@@ -26,6 +27,10 @@ func Fatal(format string, args ...interface{}) {
 
 func Debug(format string, args ...interface{}) {
 	fmt.Println(wrapper(format, debugLvl, args...))
+}
+
+func Warn(format string, args ...interface{}) {
+	fmt.Println(wrapper(format, warnLvl, args...))
 }
 
 func wrapper(txt string, lvl string, args ...interface{}) string {

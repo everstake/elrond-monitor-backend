@@ -150,7 +150,7 @@ func (s *ServiceFacade) updateStakingProviders() error {
 		}
 		meta, err := s.node.GetProviderMeta(address)
 		if err != nil {
-			return fmt.Errorf("node.GetProviderMeta: %s", err.Error())
+			log.Warn("updateStakingProviders: node.GetProviderMeta: %s", err.Error())
 		}
 		numUsers, err := s.node.GetProviderNumUsers(address)
 		if err != nil {
