@@ -138,13 +138,17 @@ func (api *API) GetNetworkConfig() (ne NetworkConfig, err error) {
 }
 
 func (api *API) GetUserStake(address string) (us UserStake, err error) {
+	hexAddress, err := addressToHex(address)
+	if err != nil {
+		return us, fmt.Errorf("addressToHex: %s", err.Error())
+	}
 	data, err := api.contractCall(ContractReq{
 		SCAddress: api.contracts.Delegation,
 		FuncName:  "getUserStakeByType",
-		Args:      []string{address},
+		Args:      []string{hexAddress},
 	})
 	if err != nil {
-		return us, fmt.Errorf("contractCall: %s", err.Error())
+		return us, fmt.Errorf("user: %s, contractCall: %s", address, err.Error())
 	}
 	if len(data) < 5 {
 		return us, fmt.Errorf("len(data) != 5")
@@ -160,14 +164,18 @@ func (api *API) GetUserStake(address string) (us UserStake, err error) {
 		ActiveStake:          activeStake,
 		UnstakedStake:        unstakedStake,
 		DeferredPaymentStake: deferredPaymentStake,
-	}, err
+	}, nil
 }
 
 func (api *API) GetClaimableRewards(address string) (reward decimal.Decimal, err error) {
+	hexAddress, err := addressToHex(address)
+	if err != nil {
+		return reward, fmt.Errorf("addressToHex: %s", err.Error())
+	}
 	data, err := api.contractCall(ContractReq{
 		SCAddress: api.contracts.Delegation,
 		FuncName:  "getClaimableRewards",
-		Args:      []string{address},
+		Args:      []string{hexAddress},
 	})
 	if err != nil {
 		return reward, fmt.Errorf("contractCall: %s", err.Error())

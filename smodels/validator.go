@@ -22,7 +22,7 @@ type StakingProvider struct {
 	Provider         string          `json:"provider"`
 	ServiceFee       decimal.Decimal `json:"service_fee"`
 	DelegationCap    decimal.Decimal `json:"delegation_cap"`
-	APR              float64         `json:"apr"`
+	APR              decimal.Decimal `json:"apr"`
 	NumUsers         uint64          `json:"num_users"`
 	CumulatedRewards decimal.Decimal `json:"cumulated_rewards"`
 	Identity         string          `json:"identity"`
@@ -54,7 +54,7 @@ type SourceStakingProvider struct {
 	CheckCapOnRedelegate               bool            `json:"checkCapOnRedelegate"`
 	CreatedNonce                       uint64          `json:"createdNonce"`
 	UnBondPeriod                       uint64          `json:"unBondPeriod"`
-	Apr                                float64         `json:"apr"`
+	Apr                                decimal.Decimal `json:"apr"`
 	AprValue                           decimal.Decimal `json:"aprValue"`
 	TotalActiveStake                   decimal.Decimal `json:"totalActiveStake"`
 	TotalUnStaked                      decimal.Decimal `json:"totalUnStaked"`
