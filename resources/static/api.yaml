@@ -587,6 +587,95 @@ paths:
                           created_at: 1627476960 }
         404:
           description: "Not found"
+  /staking/providers:
+    get:
+      tags:
+        - "Staking"
+      summary: get all staking providers
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    provider:
+                      type: string
+        404:
+          description: "Not found"
+  /staking/provider/{address}:
+    get:
+      parameters:
+        - in: path
+          name: address
+          required: true
+          schema:
+            type: string
+      tags:
+        - "Staking"
+      summary: get staking provider
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provider:
+                    type: string
+        404:
+          description: "Not found"
+  /nodes:
+    get:
+      tags:
+        - "Staking"
+      summary: get nodes
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: number
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        tx_hash:
+                          type: string
+        404:
+          description: "Not found"
+  /node/{key}:
+    get:
+      parameters:
+        - in: path
+          name: key
+          required: true
+          schema:
+            type: string
+      tags:
+        - "Staking"
+      summary: get node information
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provider:
+                    type: string
+        404:
+          description: "Not found"
   /validators/map:
     get:
       tags:

@@ -21,8 +21,8 @@ type (
 		GetAccounts(filter filters.Accounts) (items smodels.Pagination, err error)
 		GetMiniBlock(hash string) (block smodels.Miniblock, err error)
 		GetAccount(address string) (account smodels.Account, err error)
-		UpdateNodes() error
-		GetNodes(filter filters.Nodes) (nodes []smodels.Node, err error)
+		UpdateNodes()
+		GetNodes(filter filters.Nodes) (nodes smodels.Pagination, err error)
 		UpdateStats()
 		GetStats() (stats smodels.Stats, err error)
 		GetDailyStats(filter filters.DailyStats) (items []smodels.RangeItem, err error)
@@ -33,6 +33,7 @@ type (
 		GetStakingProviders() (providers []smodels.StakingProvider, err error)
 		GetStakingProvider(address string) (provider smodels.StakingProvider, err error)
 		UpdateStakingProviders()
+		GetNode(key string) (node smodels.Node, err error)
 	}
 	parser interface {
 		GetDelegations(delegator string) map[string]decimal.Decimal

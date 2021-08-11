@@ -132,7 +132,7 @@ type (
 		TotalNumValidatorSuccess           int64   `json:"totalNumValidatorSuccess"`
 		TotalNumValidatorFailure           int64   `json:"totalNumValidatorFailure"`
 		TotalNumValidatorIgnoredSignatures int64   `json:"totalNumValidatorIgnoredSignatures"`
-		ShardID                            int64   `json:"shardId"`
+		ShardID                            uint64  `json:"shardId"`
 		ValidatorStatus                    string  `json:"validatorStatus"`
 	}
 
@@ -193,8 +193,8 @@ type (
 	ContractReq struct {
 		SCAddress string   `json:"scAddress"`
 		FuncName  string   `json:"funcName"`
-		Caller    string   `json:"caller"`
-		Args      []string `json:"args"`
+		Caller    string   `json:"caller,omitempty"`
+		Args      []string `json:"args,omitempty"`
 	}
 
 	UserStake struct {
@@ -215,5 +215,21 @@ type (
 		Name      string
 		Website   string
 		Iidentity string
+	}
+
+	QueueItem struct {
+		BLS      string
+		Provider string
+		Nonce    uint64
+		Position int64
+	}
+
+	StakeTopup struct {
+		TopUp    decimal.Decimal
+		Stake    decimal.Decimal
+		Locked   decimal.Decimal
+		NumNodes uint64
+		Address  string
+		Blses    []string
 	}
 )

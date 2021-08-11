@@ -68,6 +68,9 @@ type (
 		GetProviderMeta(provider string) (config ProviderMeta, err error)
 		GetProviderNumUsers(provider string) (count uint64, err error)
 		GetCumulatedRewards(provider string) (amount decimal.Decimal, err error)
+		GetQueue() (items []QueueItem, err error)
+		GetOwner(bls string) (owner string, err error)
+		GetTotalStakedTopUpStakedBlsKeys(address string) (stake StakeTopup, err error)
 	}
 )
 
@@ -241,6 +244,9 @@ func (api *API) GetProviderMeta(provider string) (config ProviderMeta, err error
 		FuncName:  "getMetaData",
 	})
 	if err != nil {
+		if err.Error() == "[user error]: delegation meta data is not set" {
+			return config, nil
+		}
 		return config, fmt.Errorf("contractCall: %s", err.Error())
 	}
 	if len(rows) != 3 {
@@ -288,6 +294,107 @@ func (api *API) GetCumulatedRewards(provider string) (amount decimal.Decimal, er
 		return amount, fmt.Errorf("ContractValueToDecimal: %s", err.Error())
 	}
 	return amount, nil
+}
+
+func (api *API) GetQueue() (items []QueueItem, err error) {
+	rows, err := api.contractCall(ContractReq{
+		SCAddress: api.contracts.Staking,
+		FuncName:  "getQueueRegisterNonceAndRewardAddress",
+		Caller:    api.contracts.Auction,
+	})
+	if err != nil {
+		if err.Error() == "[user error]: no one in waitingList" {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("contractCall: %s", err.Error())
+	}
+	if len(rows) == 0 {
+		return nil, nil
+	}
+	if len(rows)%3 != 0 {
+		return nil, fmt.Errorf("wrong len of returned data")
+	}
+	for i := 2; i < len(rows); i += 3 {
+		bls := hex.EncodeToString([]byte(mustB64Decode(rows[i-2])))
+		rewardsAdr, err := base64ToAddress(rows[i-1])
+		if err != nil {
+			return nil, fmt.Errorf("ContractValueToDecimal: %s", err.Error())
+		}
+		nonce, err := ContractValueToDecimal(rows[i-2])
+		if err != nil {
+			return nil, fmt.Errorf("ContractValueToDecimal: %s", err.Error())
+		}
+		items = append(items, QueueItem{
+			BLS:      bls,
+			Provider: rewardsAdr,
+			Nonce:    nonce.BigInt().Uint64(),
+			Position: int64((i + 1) / 3),
+		})
+	}
+
+	return items, nil
+}
+
+func (api *API) GetOwner(bls string) (owner string, err error) {
+	rows, err := api.contractCall(ContractReq{
+		SCAddress: api.contracts.Staking,
+		FuncName:  "getOwner",
+		Caller:    api.contracts.Auction,
+		Args:      []string{bls},
+	})
+	if err != nil {
+		return owner, fmt.Errorf("contractCall: %s", err.Error())
+	}
+	if len(rows) != 1 {
+		return owner, nil
+	}
+	owner, err = base64ToAddress(rows[0])
+	if err != nil {
+		return owner, fmt.Errorf("base64ToAddress: %s", err.Error())
+	}
+	return owner, nil
+}
+
+func (api *API) GetTotalStakedTopUpStakedBlsKeys(address string) (stake StakeTopup, err error) {
+	hexAddress, err := addressToHex(address)
+	if err != nil {
+		return stake, fmt.Errorf("addressToHex: %s", err.Error())
+	}
+	rows, err := api.contractCall(ContractReq{
+		SCAddress: api.contracts.Auction,
+		FuncName:  "getTotalStakedTopUpStakedBlsKeys",
+		Caller:    api.contracts.Auction,
+		Args:      []string{hexAddress},
+	})
+	if err != nil {
+		return stake, fmt.Errorf("contractCall: %s", err.Error())
+	}
+	if len(rows) == 0 {
+		return stake, nil
+	}
+	if len(rows) < 4 {
+		return stake, fmt.Errorf("worong len of rows")
+	}
+	stake.TopUp, err = ContractValueToDecimal(rows[0])
+	if err != nil {
+		return stake, fmt.Errorf("ContractValueToDecimal(topUp): %s", err.Error())
+	}
+	stake.Stake, err = ContractValueToDecimal(rows[1])
+	if err != nil {
+		return stake, fmt.Errorf("ContractValueToDecimal(staked): %s", err.Error())
+	}
+	numNodes, err := ContractValueToDecimal(rows[2])
+	if err != nil {
+		return stake, fmt.Errorf("ContractValueToDecimal(numNodes): %s", err.Error())
+	}
+	stake.NumNodes = numNodes.BigInt().Uint64()
+	for _, b := range rows[3:] {
+		bts, _ := base64.StdEncoding.DecodeString(b)
+		stake.Blses = append(stake.Blses, hex.EncodeToString(bts))
+	}
+	stake.Address = address
+	stake.Locked = stake.Stake.Add(stake.TopUp)
+	return stake, nil
 }
 
 func (api *API) contractCall(req ContractReq) (data []string, err error) {

@@ -9,6 +9,7 @@ import (
 	"github.com/everstake/elrond-monitor-backend/smodels"
 	"github.com/shopspring/decimal"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -17,7 +18,14 @@ const (
 	nodesStorageKey               = "nodes"
 )
 
-func (s *ServiceFacade) UpdateNodes() error {
+func (s *ServiceFacade) UpdateNodes() {
+	err := s.updateNodes()
+	if err != nil {
+		log.Error("updateNodes: %s", err.Error())
+	}
+}
+
+func (s *ServiceFacade) updateNodes() error {
 	nodesStatus, err := s.node.GetHeartbeatStatus()
 	if err != nil {
 		return fmt.Errorf("node.GetHeartbeatStatus: %s", err.Error())
@@ -28,71 +36,183 @@ func (s *ServiceFacade) UpdateNodes() error {
 	}
 	nodesMap := make(map[string]smodels.Node)
 	for _, n := range nodesStatus {
-		t := smodels.NodeTypeObserver
-		if n.PeerType != smodels.NodeTypeObserver {
-			t = smodels.NodeTypeValidator
+		shard := n.ComputedShardID
+		if n.PeerType == smodels.NodeTypeObserver {
+			shard = n.ReceivedShardID
 		}
-		nodesMap[n.PublicKey] = smodels.Node{HeartbeatStatus: n, Type: t}
-
+		nodesMap[n.PublicKey] = smodels.Node{
+			HeartbeatStatus:    n,
+			ValidatorStatistic: node.ValidatorStatistic{ShardID: shard},
+		}
 	}
 	for key, stat := range validatorStatistics {
 		n := nodesMap[key]
 		n.ValidatorStatistic = stat
-		nodesMap[key] = smodels.Node{ValidatorStatistic: stat}
+		nodesMap[key] = n
 	}
 
-	for key, node := range nodesMap {
-		if node.TotalUpTimeSec == 0 && node.TotalDownTimeSec == 0 {
-			node.UpTime = 0
-			node.DownTime = 0
-			if node.IsActive {
-				node.UpTime = 100
-				node.DownTime = 100
+	for key, n := range nodesMap {
+		status := n.ValidatorStatus
+		if status == "" {
+			status = n.PeerType
+		}
+		if status == smodels.NodeTypeObserver {
+			n.Type = smodels.NodeTypeObserver
+		} else {
+			n.Type = smodels.NodeTypeValidator
+			if strings.Contains(status, smodels.NodeStatusLeaving) {
+				status = smodels.NodeStatusLeaving
+			}
+		}
+		n.Status = status
+		if n.TotalUpTimeSec == 0 && n.TotalDownTimeSec == 0 {
+			n.UpTime = 0
+			n.DownTime = 0
+			if n.IsActive {
+				n.UpTime = 100
+				n.DownTime = 100
 			}
 		} else {
-			node.UpTime = float64(node.TotalUpTimeSec*100) / float64(node.TotalUpTimeSec+node.TotalDownTimeSec)
-			node.DownTime = 100 - node.UpTime
+			n.UpTime = float64(n.TotalUpTimeSec*100) / float64(n.TotalUpTimeSec+n.TotalDownTimeSec)
+			n.DownTime = 100 - n.UpTime
 		}
-		nodesMap[key] = node
+		nodesMap[key] = n
 	}
 
-	//providers, err := s.GetStakingProviders()
-	//if err != nil {
-	//	return fmt.Errorf("GetStakingProviders: %s", err.Error())
-	//}
+	// set from queue
+	queue, err := s.node.GetQueue()
+	if err != nil {
+		return fmt.Errorf("node.GetQueue: %s", err.Error())
+	}
+	for _, item := range queue {
+		n, ok := nodesMap[item.BLS]
+		if ok {
+			n.Type = smodels.NodeTypeValidator
+			n.Status = smodels.NodeStatusQueued
+			n.Position = item.Position
+		} else {
+			n = smodels.Node{
+				HeartbeatStatus: node.HeartbeatStatus{
+					PublicKey: item.BLS,
+				},
+				Position: item.Position,
+				Type:     smodels.NodeTypeValidator,
+				Status:   smodels.NodeStatusQueued,
+			}
+		}
+		nodesMap[item.BLS] = n
+	}
 
-	//for _, p := range providers {
-	//	node, ok := nodesMap[p. ?]
-	//	if ok && node.Type == smodels.NodeTypeValidator {
-	//		node.Owner = p.Owner
-	//		node.Provider = p.Contract
-	//		if p.Identity.Name != "" {
-	//
-	//		}
-	//	}
-	//}
+	// set owners
+	for key, n := range nodesMap {
+		if n.Type != smodels.NodeTypeValidator {
+			continue
+		}
+		owner, err := s.node.GetOwner(key)
+		if err != nil {
+			return fmt.Errorf("node.GetOwner: %s", err.Error())
+		}
+		n.Owner = owner
+		nodesMap[key] = n
+	}
 
-	err = s.setCache(nodesStorageKey, nodesStatus)
+	var providers []smodels.StakingProvider
+	err = s.getCache(stakingProvidersMapStorageKey, &providers)
+	if err != nil {
+		return fmt.Errorf("getCache(providers): %s", err.Error())
+	}
+	findProvider := func(owner string) (smodels.StakingProvider, bool) {
+		for _, p := range providers {
+			if p.Provider == owner {
+				return p, true
+			}
+		}
+		return smodels.StakingProvider{}, false
+	}
+
+	for key, n := range nodesMap {
+		if n.Type != smodels.NodeTypeValidator {
+			continue
+		}
+		p, found := findProvider(n.Owner)
+		if found {
+			n.Provider = p.Provider
+			if p.Identity != "" {
+				n.Identity = p.Identity
+			}
+			nodesMap[key] = n
+		}
+	}
+
+	// set stakes
+	for key, n := range nodesMap {
+		if n.Type != smodels.NodeTypeValidator {
+			continue
+		}
+		address := n.Provider
+		if address == "" {
+			address = n.Owner
+		}
+		stake, err := s.node.GetTotalStakedTopUpStakedBlsKeys(address)
+		if err != nil {
+			log.Warn("updateNodes: node.GetTotalStakedTopUpStakedBlsKeys: %s", err.Error())
+			continue
+		}
+		n.Stake = node.ValueToEGLD(stake.Stake)
+		n.TopUp = node.ValueToEGLD(stake.TopUp)
+		n.Locked = node.ValueToEGLD(stake.Locked)
+		nodesMap[key] = n
+	}
+
+	var nodes []smodels.Node
+	for key, n := range nodesMap {
+		n.PublicKey = key
+		nodes = append(nodes, n)
+	}
+
+	err = s.setCache(nodesStorageKey, nodes)
 	if err != nil {
 		return fmt.Errorf("setCache: %s", err.Error())
 	}
 	return nil
 }
 
-func (s *ServiceFacade) GetNodes(filter filters.Nodes) (nodes []smodels.Node, err error) {
+func (s *ServiceFacade) GetNodes(filter filters.Nodes) (pagination smodels.Pagination, err error) {
+	var nodes []smodels.Node
 	err = s.getCache(nodesStorageKey, &nodes)
 	if err != nil {
-		return nil, fmt.Errorf("getCache: %s", err.Error())
+		return pagination, fmt.Errorf("getCache: %s", err.Error())
 	}
 	nodesLen := uint64(len(nodes))
+	pagination.Count = nodesLen
 	if filter.Limit*(filter.Page-1) > nodesLen {
-		return nil, nil
+		return pagination, nil
 	}
 	maxIndex := filter.Page*filter.Limit - 1
 	if nodesLen-1 < maxIndex {
 		maxIndex = nodesLen - 1
 	}
-	return nodes, nil
+	pagination.Items = nodes[filter.Offset():maxIndex]
+	return pagination, nil
+}
+
+func (s *ServiceFacade) GetNode(key string) (node smodels.Node, err error) {
+	var nodes []smodels.Node
+	err = s.getCache(nodesStorageKey, &nodes)
+	if err != nil {
+		return node, fmt.Errorf("getCache: %s", err.Error())
+	}
+	for _, n := range nodes {
+		if n.PublicKey == key {
+			return n, nil
+		}
+	}
+	msg := fmt.Sprintf("node %s not found", key)
+	return node, smodels.Error{
+		Err:      msg,
+		Msg:      msg,
+		HttpCode: 404,
+	}
 }
 
 func (s *ServiceFacade) GetStakingProviders() (providers []smodels.StakingProvider, err error) {

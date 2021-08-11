@@ -46,6 +46,7 @@ type (
 		Staking           string
 		DelegationManager string
 		Delegation        string
+		Auction           string
 	}
 )
 

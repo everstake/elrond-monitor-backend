@@ -53,6 +53,9 @@ func main() {
 	sch.AddProcessWithInterval(s.UpdateStats, time.Minute)
 	sch.AddProcessWithInterval(s.UpdateValidatorsMap, time.Minute*20)
 	sch.AddProcessWithInterval(s.UpdateStakingProviders, time.Minute*5)
+	sch.AddProcessWithInterval(s.UpdateValidatorsMap, time.Minute*20)
+	sch.AddProcessWithInterval(s.UpdateStakingProviders, time.Minute*5)
+	sch.AddProcessWithInterval(s.UpdateNodes, time.Minute*5)
 
 	g := modules.NewGroup(apiServer, prs, ds, sch)
 	g.Run()

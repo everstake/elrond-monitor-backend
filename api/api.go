@@ -112,6 +112,8 @@ func (api *API) loadRoutes() {
 		{Path: "/stake/events", Method: http.MethodGet, Func: api.GetStakeEvents},
 		{Path: "/staking/providers", Method: http.MethodGet, Func: api.GetStakingProviders},
 		{Path: "/staking/provider/{address}", Method: http.MethodGet, Func: api.GetStakingProvider},
+		{Path: "/nodes", Method: http.MethodGet, Func: api.GetNodes},
+		{Path: "/node/{key}", Method: http.MethodGet, Func: api.GetNode},
 	})
 
 }

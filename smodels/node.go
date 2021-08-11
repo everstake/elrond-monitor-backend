@@ -8,6 +8,13 @@ import (
 const (
 	NodeTypeObserver  = "observer"
 	NodeTypeValidator = "validator"
+
+	NodeStatusUnknown  = "unknown"
+	NodeStatusWaiting  = "waiting"
+	NodeStatusEligible = "eligible"
+	NodeStatusJailed   = "jailed"
+	NodeStatusQueued   = "queued"
+	NodeStatusLeaving  = "leaving"
 )
 
 type Node struct {
@@ -22,4 +29,5 @@ type Node struct {
 	Stake    decimal.Decimal `json:"stake"`
 	TopUp    decimal.Decimal `json:"topUp"`
 	Locked   decimal.Decimal `json:"locked"`
+	Position int64           `json:"position"`
 }
