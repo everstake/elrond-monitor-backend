@@ -73,7 +73,7 @@ func (s *ServiceFacade) updateStats() error {
 }
 
 func (s *ServiceFacade) GetValidatorsMap() ([]byte, error) {
-	data, err := s.dao.GetStorageValue(validatorsMapSource)
+	data, err := s.dao.GetStorageValue(validatorsMapStorageKey)
 	if err != nil {
 		return nil, fmt.Errorf("dao.GetStorageValue: %s", err.Error())
 	}
