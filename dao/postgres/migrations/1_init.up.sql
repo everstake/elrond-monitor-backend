@@ -11,7 +11,7 @@ create table parsers
 );
 
 insert into parsers (par_id, par_title, par_height)
-VALUES (1, 'elrond', 585045);
+VALUES (1, 'elrond', 0);
 
 create type block_status as ENUM ('on-chain');
 

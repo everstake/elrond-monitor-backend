@@ -64,3 +64,65 @@ type SourceStakingProvider struct {
 	MaxRedelegateAmountAllowed         decimal.Decimal `json:"maxRedelegateAmountAllowed"`
 	OwnerBelowRequiredBalanceThreshold bool            `json:"ownerBelowRequiredBalanceThreshold"`
 }
+
+type IdentityKeybase struct {
+	Status struct {
+		Code int    `json:"code"`
+		Name string `json:"name"`
+	} `json:"status"`
+	Them struct {
+		ID     string `json:"id"`
+		Basics struct {
+			Username      string `json:"username"`
+			Ctime         int    `json:"ctime"`
+			Mtime         int    `json:"mtime"`
+			IDVersion     int    `json:"id_version"`
+			TrackVersion  int    `json:"track_version"`
+			LastIDChange  int    `json:"last_id_change"`
+			UsernameCased string `json:"username_cased"`
+			Status        int    `json:"status"`
+			Salt          string `json:"salt"`
+			EldestSeqno   int    `json:"eldest_seqno"`
+		} `json:"basics"`
+		Profile struct {
+			Mtime    interface{} `json:"mtime"`
+			FullName string      `json:"full_name"`
+			Location interface{} `json:"location"`
+			Bio      string      `json:"bio"`
+		} `json:"profile"`
+		PublicKeys struct {
+			AllBundles           []string `json:"all_bundles"`
+			Subkeys              []string `json:"subkeys"`
+			Sibkeys              []string `json:"sibkeys"`
+			EldestKid            string   `json:"eldest_kid"`
+			EldestKeyFingerprint string   `json:"eldest_key_fingerprint"`
+		} `json:"public_keys"`
+		ProofsSummary struct {
+			ByPresentationGroup struct {
+			} `json:"by_presentation_group"`
+			BySigID struct {
+			} `json:"by_sig_id"`
+			HasWeb bool `json:"has_web"`
+		} `json:"proofs_summary"`
+		CryptocurrencyAddresses struct {
+		} `json:"cryptocurrency_addresses"`
+		Pictures struct {
+			Primary struct {
+				URL    string      `json:"url"`
+				Source interface{} `json:"source"`
+			} `json:"primary"`
+		} `json:"pictures"`
+		Sigs struct {
+			Last struct {
+				SigID       string `json:"sig_id"`
+				Seqno       int    `json:"seqno"`
+				PayloadHash string `json:"payload_hash"`
+			} `json:"last"`
+		} `json:"sigs"`
+		Stellar struct {
+			Hidden  bool `json:"hidden"`
+			Primary struct {
+			} `json:"primary"`
+		} `json:"stellar"`
+	} `json:"them"`
+}

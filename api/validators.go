@@ -102,11 +102,11 @@ func (api *API) GetValidators(w http.ResponseWriter, r *http.Request) {
 		jsonBadRequest(w, err.Error())
 		return
 	}
-	Validators, err := api.svc.GetValidators(filter)
+	validators, err := api.svc.GetValidators(filter)
 	if err != nil {
 		log.Error("API GetValidators: svc.GetValidators: %s", err.Error())
 		jsonError(err, w)
 		return
 	}
-	jsonData(w, Validators)
+	jsonData(w, validators)
 }

@@ -12,6 +12,7 @@ type Identity struct {
 	Score        uint64          `json:"score"`
 	Stake        decimal.Decimal `json:"stake"`
 	StakePercent float64         `json:"stake_percent"`
-	ToUp         decimal.Decimal `json:"to_up"`
+	TopUp        decimal.Decimal `json:"top_up"`
 	Validators   uint64          `json:"validators"`
+	Providers    []string        `json:"providers"`
 }

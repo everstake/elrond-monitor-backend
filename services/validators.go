@@ -32,7 +32,7 @@ func (s *ServiceFacade) GetValidators(filter filters.Validators) (pagination smo
 	if filter.Limit*(filter.Page-1) > validatorsLen {
 		return pagination, nil
 	}
-	maxIndex := filter.Page*filter.Limit - 1
+	maxIndex := filter.Page * filter.Limit
 	if validatorsLen-1 < maxIndex {
 		maxIndex = validatorsLen - 1
 	}
@@ -95,34 +95,43 @@ func (s *ServiceFacade) updateValidators() error {
 		var stake, topUp decimal.Decimal
 		var score float64
 		var count uint64
+		var providers []string
 		for _, n := range ns {
 			stake = stake.Add(n.Stake)
 			topUp = topUp.Add(n.TopUp)
-			score = n.RatingModifier
+			score += n.RatingModifier
 			if n.Type == smodels.NodeTypeValidator && n.Status != "inactive" {
 				count++
+			}
+			if n.Provider != "" {
+				providers = append(providers, n.Provider)
 			}
 		}
 		locked := stake.Add(topUp)
 		stakePercent, _ := locked.Mul(decimal.New(10000, 0)).Div(totalLocked).Float64()
-		// todo
-		// https://keybase.io/_/api/1.0/user/lookup.json?username=
+		var kb smodels.IdentityKeybase
+		if len(key) < 192 && len(key) != 0 {
+			kb, err = s.getIdentityProfile(key)
+			if err != nil {
+				log.Warn("updateValidators: getIdentityProfile(%s): %s", key, err.Error())
+			}
+		}
 		identities = append(identities, smodels.Identity{
-			Avatar:       "",
-			Description:  "",
+			Avatar:       kb.Them.Pictures.Primary.URL,
+			Description:  kb.Them.Profile.Bio,
 			Identity:     key,
 			Locked:       locked,
-			Name:         "",
-			Rank:         0,
+			Name:         kb.Them.Profile.FullName,
 			Score:        uint64(score),
 			Stake:        stake,
 			StakePercent: stakePercent,
-			ToUp:         topUp,
+			TopUp:        topUp,
 			Validators:   count,
+			Providers:    providers,
 		})
 	}
 	sort.Slice(identities, func(i, j int) bool {
-		return identities[i].Score > identities[j].Score
+		return identities[i].StakePercent > identities[j].StakePercent
 	})
 	for i := range identities {
 		identities[i].Rank = uint64(i + 1)
@@ -235,7 +244,7 @@ func (s *ServiceFacade) updateNodes() error {
 	var providers []smodels.StakingProvider
 	err = s.getCache(stakingProvidersMapStorageKey, &providers)
 	if err != nil {
-		return fmt.Errorf("getCache(providers): %s", err.Error())
+		log.Warn("updateNodes: getCache(providers): %s", err.Error())
 	}
 	findProvider := func(owner string) (smodels.StakingProvider, bool) {
 		for _, p := range providers {
@@ -304,7 +313,7 @@ func (s *ServiceFacade) GetNodes(filter filters.Nodes) (pagination smodels.Pagin
 	if filter.Limit*(filter.Page-1) > nodesLen {
 		return pagination, nil
 	}
-	maxIndex := filter.Page*filter.Limit - 1
+	maxIndex := filter.Page * filter.Limit
 	if nodesLen-1 < maxIndex {
 		maxIndex = nodesLen - 1
 	}
@@ -454,4 +463,21 @@ func (s *ServiceFacade) getStakingProvidersFromSource() (providers []smodels.Sou
 		return providers, fmt.Errorf("json.Decode: %s", err.Error())
 	}
 	return providers, nil
+}
+
+func (s *ServiceFacade) getIdentityProfile(identity string) (data smodels.IdentityKeybase, err error) {
+	client := http.Client{Timeout: time.Second * 30}
+	resp, err := client.Get(fmt.Sprintf("https://keybase.io/_/api/1.0/user/lookup.json?username=%s", identity))
+	if err != nil {
+		return data, fmt.Errorf("client.Get: %s", err.Error())
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return data, fmt.Errorf("status code: %d", resp.StatusCode)
+	}
+	err = json.NewDecoder(resp.Body).Decode(&data)
+	if err != nil {
+		return data, fmt.Errorf("json.Decode: %s", err.Error())
+	}
+	return data, nil
 }
