@@ -114,6 +114,8 @@ func (api *API) loadRoutes() {
 		{Path: "/staking/provider/{address}", Method: http.MethodGet, Func: api.GetStakingProvider},
 		{Path: "/nodes", Method: http.MethodGet, Func: api.GetNodes},
 		{Path: "/node/{key}", Method: http.MethodGet, Func: api.GetNode},
+		{Path: "/validators", Method: http.MethodGet, Func: api.GetValidators},
+		{Path: "/validator/{identity}", Method: http.MethodGet, Func: api.GetValidator},
 	})
 
 }

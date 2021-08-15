@@ -179,7 +179,7 @@ create table storage
             primary key,
     stg_value text default ''::text not null
 );
-INSERT INTO storage (stg_key) VALUES ('stats'), ('staking_providers'), ('nodes'), ('validators_map');
+INSERT INTO storage (stg_key) VALUES ('stats'), ('staking_providers'), ('nodes'), ('validators_map'), ('validators');
 
 
 

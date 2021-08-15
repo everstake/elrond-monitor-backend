@@ -60,7 +60,7 @@ func NewDailyStats(cfg config.Config, d dao.DAO) (*DailyStats, error) {
 func (ds *DailyStats) Run() error {
 	for {
 		y, m, d := time.Now().Date()
-		initTime := time.Date(y, m, d, 10, 55, 0, 0, time.UTC)
+		initTime := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
 		if time.Now().After(initTime) {
 			initTime = initTime.Add(time.Hour * 24)
 		}

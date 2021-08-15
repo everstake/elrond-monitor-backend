@@ -70,3 +70,43 @@ func (api *API) GetNodes(w http.ResponseWriter, r *http.Request) {
 	}
 	jsonData(w, nodes)
 }
+
+
+func (api *API) GetValidator(w http.ResponseWriter, r *http.Request) {
+	identity, ok := mux.Vars(r)["identity"]
+	if !ok || identity == "" {
+		jsonBadRequest(w, "invalid identity")
+		return
+	}
+	provider, err := api.svc.GetValidator(identity)
+	if err != nil {
+		log.Error("API GetValidator: svc.GetValidator: %s", err.Error())
+		jsonError(err, w)
+		return
+	}
+	jsonData(w, provider)
+}
+
+func (api *API) GetValidators(w http.ResponseWriter, r *http.Request) {
+	var filter filters.Validators
+	err := api.queryDecoder.Decode(&filter, r.URL.Query())
+	if err != nil {
+		log.Debug("API GetValidators: Decode: %s", err.Error())
+		jsonBadRequest(w, "bad params")
+		return
+	}
+	filter.SetMaxLimit(5000)
+	err = filter.Validate()
+	if err != nil {
+		log.Debug("API GetValidators: filter.Validate: %s", err.Error())
+		jsonBadRequest(w, err.Error())
+		return
+	}
+	Validators, err := api.svc.GetValidators(filter)
+	if err != nil {
+		log.Error("API GetValidators: svc.GetValidators: %s", err.Error())
+		jsonError(err, w)
+		return
+	}
+	jsonData(w, Validators)
+}
