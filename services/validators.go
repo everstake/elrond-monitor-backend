@@ -22,7 +22,7 @@ const (
 )
 
 func (s *ServiceFacade) GetValidators(filter filters.Validators) (pagination smodels.Pagination, err error) {
-	var validators []smodels.Validator
+	var validators []smodels.Identity
 	err = s.getCache(validatorsStorageKey, &validators)
 	if err != nil {
 		return pagination, fmt.Errorf("getCache: %s", err.Error())
@@ -40,8 +40,8 @@ func (s *ServiceFacade) GetValidators(filter filters.Validators) (pagination smo
 	return pagination, nil
 }
 
-func (s *ServiceFacade) GetValidator(identity string) (validator smodels.Validator, err error) {
-	var validators []smodels.Validator
+func (s *ServiceFacade) GetValidator(identity string) (validator smodels.Identity, err error) {
+	var validators []smodels.Identity
 	err = s.getCache(validatorsStorageKey, &validators)
 	if err != nil {
 		return validator, fmt.Errorf("getCache: %s", err.Error())

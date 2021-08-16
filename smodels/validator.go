@@ -2,20 +2,19 @@ package smodels
 
 import "github.com/shopspring/decimal"
 
-type Validator struct {
-	Identity     string                 `json:"identity"`
-	Name         string                 `json:"name"`
-	Description  string                 `json:"description"`
-	Avatar       string                 `json:"avatar"`
-	Score        uint64                 `json:"score"`
-	Validators   uint64                 `json:"validators"`
-	Stake        string                 `json:"stake"`
-	TopUp        string                 `json:"topUp"`
-	Locked       string                 `json:"locked"`
-	Distribution map[string]interface{} `json:"distribution"`
-	Providers    []string               `json:"providers"`
-	StakePercent decimal.Decimal        `json:"stake_percent"`
-	Rank         uint64                 `json:"rank"`
+type Identity struct {
+	Identity     string          `json:"identity"`
+	Name         string          `json:"name"`
+	Avatar       string          `json:"avatar"`
+	Description  string          `json:"description"`
+	Locked       decimal.Decimal `json:"locked"`
+	Rank         uint64          `json:"rank"`
+	Score        uint64          `json:"score"`
+	Stake        decimal.Decimal `json:"stake"`
+	StakePercent float64         `json:"stake_percent"`
+	TopUp        decimal.Decimal `json:"top_up"`
+	Validators   uint64          `json:"validators"`
+	Providers    []string        `json:"providers"`
 }
 
 type StakingProvider struct {

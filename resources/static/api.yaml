@@ -676,6 +676,47 @@ paths:
                     type: string
         404:
           description: "Not found"
+  /validators:
+    get:
+      tags:
+        - "Staking"
+      summary: get validators
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: number
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/validator'
+        404:
+          description: "Not found"
+  /validator/{identity}:
+    get:
+      parameters:
+        - in: path
+          name: identity
+          required: true
+          schema:
+            type: string
+      tags:
+        - "Staking"
+      summary: get validator information
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/validator'
+        404:
+          description: "Not found"
   /validators/map:
     get:
       tags:
@@ -760,6 +801,33 @@ components:
           fee: "0.000035",
           miniblock_hash: "d9a9d31b0553c4d40a62b8e0fe9a8cf603d8d0eff3d609a40e44b361bbb5a659",
           timestamp: 1623945181 }
+    validator:
+      type: object
+      properties:
+        identity:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        avatar:
+          type: string
+        score:
+          type: number
+        locked:
+          type: number
+        stake:
+          type: number
+        stake_percent:
+          type: number
+        top_up:
+          type: number
+        validators:
+          type: number
+        providers:
+          type: array
+          items:
+            type: string
     rangeData:
       type: array
       items:
