@@ -18,18 +18,27 @@ type Identity struct {
 }
 
 type StakingProvider struct {
-	Provider         string          `json:"provider"`
-	ServiceFee       decimal.Decimal `json:"service_fee"`
-	DelegationCap    decimal.Decimal `json:"delegation_cap"`
-	APR              decimal.Decimal `json:"apr"`
-	NumUsers         uint64          `json:"num_users"`
-	CumulatedRewards decimal.Decimal `json:"cumulated_rewards"`
-	Identity         string          `json:"identity"`
-	NumNodes         uint64          `json:"num_nodes"`
-	Stake            decimal.Decimal `json:"stake"`
-	TopUp            decimal.Decimal `json:"top_up"`
-	Locked           decimal.Decimal `json:"locked"`
-	Featured         bool            `json:"featured"`
+	Provider         string                   `json:"provider"`
+	ServiceFee       decimal.Decimal          `json:"service_fee"`
+	DelegationCap    decimal.Decimal          `json:"delegation_cap"`
+	APR              decimal.Decimal          `json:"apr"`
+	NumUsers         uint64                   `json:"num_users"`
+	CumulatedRewards decimal.Decimal          `json:"cumulated_rewards"`
+	Identity         string                   `json:"identity"`
+	Name             string                   `json:"name"`
+	NumNodes         uint64                   `json:"num_nodes"`
+	Stake            decimal.Decimal          `json:"stake"`
+	TopUp            decimal.Decimal          `json:"top_up"`
+	Locked           decimal.Decimal          `json:"locked"`
+	Featured         bool                     `json:"featured"`
+	Validator        StakingProviderValidator `json:"validator"`
+}
+
+type StakingProviderValidator struct {
+	Name         string          `json:"name"`
+	Locked       decimal.Decimal `json:"locked"`
+	StakePercent float64         `json:"stake_percent"`
+	Nodes        uint64          `json:"nodes"`
 }
 
 type SourceStakingProvider struct {
