@@ -46,13 +46,13 @@ func (s *ServiceFacade) updateStats() error {
 	if err != nil {
 		return fmt.Errorf("node.GetNetworkStatus: %s", err.Error())
 	}
-	accountsTotal, err := s.dao.GetAccountsTotal(filters.Accounts{})
+	accountsTotal, err := s.dao.GetAccountsCount(filters.Accounts{})
 	if err != nil {
-		return fmt.Errorf("dao.GetAccountsTotal: %s", err.Error())
+		return fmt.Errorf("dao.GetAccountsCount: %s", err.Error())
 	}
-	txsTotal, err := s.dao.GetTransactionsTotal(filters.Transactions{})
+	txsTotal, err := s.dao.GetTransactionsCount(filters.Transactions{})
 	if err != nil {
-		return fmt.Errorf("dao.GetTransactionsTotal: %s", err.Error())
+		return fmt.Errorf("dao.GetTransactionsCount: %s", err.Error())
 	}
 	err = s.setCache(statsStorageKey, smodels.Stats{
 		Price:             marketData.Price,

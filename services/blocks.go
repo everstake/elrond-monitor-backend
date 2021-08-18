@@ -3,7 +3,10 @@ package services
 import (
 	"fmt"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
+	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/everstake/elrond-monitor-backend/smodels"
+	"github.com/shopspring/decimal"
+	"time"
 )
 
 func (s *ServiceFacade) GetBlock(hash string) (block smodels.Block, err error) {
@@ -11,7 +14,7 @@ func (s *ServiceFacade) GetBlock(hash string) (block smodels.Block, err error) {
 	if err != nil {
 		return block, fmt.Errorf("dao.GetBlock: %s", err.Error())
 	}
-	dMiniBlocks, err := s.dao.GetMiniBlocks(filters.MiniBlocks{ParentBlockHash: dBlock.Hash})
+	dMiniBlocks, err := s.dao.GetMiniblocks(filters.MiniBlocks{ParentBlockHash: dBlock.Hash})
 	if err != nil {
 		return block, fmt.Errorf("dao.GetMiniBlocks: %s", err.Error())
 	}
@@ -20,42 +23,41 @@ func (s *ServiceFacade) GetBlock(hash string) (block smodels.Block, err error) {
 	for i, b := range dMiniBlocks {
 		miniBlocks[i] = smodels.Miniblock{
 			Hash:          b.Hash,
-			ShardFrom:     b.SenderShard,
-			ShardTo:       b.ReceiverShard,
+			ShardFrom:     uint64(b.SenderShardID),
+			ShardTo:       uint64(b.ReceiverShardID),
 			BlockSender:   b.SenderBlockHash,
 			BlockReceiver: b.ReceiverBlockHash,
 			Type:          b.Type,
-			Timestamp:     smodels.NewTime(b.CreatedAt),
+			Timestamp:     smodels.NewTime(time.Unix(int64(b.Timestamp), 0)),
 		}
 		miniBlocksHashes[i] = b.Hash
 	}
-	esBlock, err := s.es.GetBlock(hash)
-	if err != nil {
-		return block, fmt.Errorf("es.GetBlock: %s", err.Error())
-	}
-	esValidatorsKeys, err := s.es.ValidatorsKeys(dBlock.Shard, dBlock.Epoch)
+	esValidatorsKeys, err := s.dao.ValidatorsKeys(uint64(dBlock.ShardID), uint64(dBlock.Epoch))
 	if err != nil {
 		return block, fmt.Errorf("es.ValidatorsKeys: %s", err.Error())
 	}
-	validatorsKeys := make([]string, len(esValidatorsKeys.PublicKeys))
-	for i, key := range esBlock.Validators {
-		validatorsKeys[i] = validatorKeyByIndex(esValidatorsKeys.PublicKeys, key)
+	var validatorsKeys []string
+	for _, key := range dBlock.Validators {
+		val := validatorKeyByIndex(esValidatorsKeys.PublicKeys, key)
+		if val != "" {
+			validatorsKeys = append(validatorsKeys, val)
+		}
 	}
 	block = smodels.Block{
 		Hash:                  dBlock.Hash,
 		Nonce:                 dBlock.Nonce,
-		Shard:                 dBlock.Shard,
-		Epoch:                 dBlock.Epoch,
-		TxCount:               dBlock.NumTxs,
-		Size:                  esBlock.Size,
-		Proposer:              validatorKeyByIndex(esValidatorsKeys.PublicKeys, esBlock.Proposer),
+		Shard:                 uint64(dBlock.ShardID),
+		Epoch:                 uint64(dBlock.Epoch),
+		TxCount:               uint64(dBlock.TxCount),
+		Size:                  dBlock.Size,
+		Proposer:              validatorKeyByIndex(esValidatorsKeys.PublicKeys, dBlock.Proposer),
 		Miniblocks:            miniBlocksHashes,
-		NotarizedBlocksHashes: esBlock.NotarizedBlocksHashes,
+		NotarizedBlocksHashes: dBlock.NotarizedBlocksHashes,
 		Validators:            validatorsKeys,
-		PubKeyBitmap:          esBlock.PubKeyBitmap,
-		StateRootHash:         esBlock.StateRootHash,
-		PrevHash:              esBlock.PrevHash,
-		Timestamp:             smodels.NewTime(dBlock.CreatedAt),
+		PubKeyBitmap:          dBlock.PubKeyBitmap,
+		StateRootHash:         dBlock.StateRootHash,
+		PrevHash:              dBlock.PrevHash,
+		Timestamp:             smodels.NewTime(time.Unix(int64(dBlock.Timestamp), 0)),
 	}
 	return block, nil
 }
@@ -77,15 +79,15 @@ func (s *ServiceFacade) GetBlocks(filter filters.Blocks) (items smodels.Paginati
 		blocks[i] = smodels.Block{
 			Hash:      b.Hash,
 			Nonce:     b.Nonce,
-			Shard:     b.Shard,
-			Epoch:     b.Epoch,
-			TxCount:   b.NumTxs,
-			Timestamp: smodels.NewTime(b.CreatedAt),
+			Shard:     uint64(b.ShardID),
+			Epoch:     uint64(b.Epoch),
+			TxCount:   uint64(b.TxCount),
+			Timestamp: smodels.NewTime(time.Unix(int64(b.Timestamp), 0)),
 		}
 	}
-	total, err := s.dao.GetBlocksTotal(filter)
+	total, err := s.dao.GetBlocksCount(filter)
 	if err != nil {
-		return items, fmt.Errorf("dao.GetBlocksTotal: %s", err.Error())
+		return items, fmt.Errorf("dao.GetBlocksCount: %s", err.Error())
 	}
 	return smodels.Pagination{
 		Items: blocks,
@@ -109,9 +111,9 @@ func (s *ServiceFacade) GetBlockByNonce(shard uint64, nonce uint64) (block smode
 }
 
 func (s *ServiceFacade) GetMiniBlock(hash string) (block smodels.Miniblock, err error) {
-	dBlock, err := s.dao.GetMiniBlock(hash)
+	dBlock, err := s.dao.GetMiniblock(hash)
 	if err != nil {
-		return block, fmt.Errorf("dao.GetMiniBlock: %s", err.Error())
+		return block, fmt.Errorf("dao.GetMiniblock: %s", err.Error())
 	}
 	dTxs, err := s.dao.GetTransactions(filters.Transactions{MiniBlock: hash})
 	if err != nil {
@@ -119,27 +121,27 @@ func (s *ServiceFacade) GetMiniBlock(hash string) (block smodels.Miniblock, err 
 	}
 	txs := make([]smodels.Tx, len(dTxs))
 	for i, tx := range dTxs {
+		val, _ := decimal.NewFromString(tx.Value)
 		txs[i] = smodels.Tx{
 			Hash:          tx.Hash,
 			Status:        tx.Status,
 			From:          tx.Sender,
 			To:            tx.Receiver,
-			Value:         tx.Value,
-			MiniblockHash: tx.MiniBlockHash,
-			ShardFrom:     tx.SenderShard,
-			ShardTo:       tx.ReceiverShard,
-			Type:          "", // todo
-			Timestamp:     smodels.NewTime(tx.CreatedAt),
+			Value:         node.ValueToEGLD(val),
+			MiniblockHash: tx.MBHash,
+			ShardFrom:     uint64(tx.SenderShard),
+			ShardTo:       uint64(tx.ReceiverShard),
+			Timestamp:     smodels.NewTime(time.Unix(int64(tx.Timestamp), 0)),
 		}
 	}
 	return smodels.Miniblock{
 		Hash:          dBlock.Hash,
-		ShardFrom:     dBlock.SenderShard,
-		ShardTo:       dBlock.ReceiverShard,
+		ShardFrom:     uint64(dBlock.SenderShardID),
+		ShardTo:       uint64(dBlock.ReceiverShardID),
 		BlockSender:   dBlock.SenderBlockHash,
 		BlockReceiver: dBlock.ReceiverBlockHash,
 		Type:          dBlock.Type,
 		Txs:           txs,
-		Timestamp:     smodels.NewTime(dBlock.CreatedAt),
+		Timestamp:     smodels.NewTime(time.Unix(int64(dBlock.Timestamp), 0)),
 	}, nil
 }

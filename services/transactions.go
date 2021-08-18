@@ -6,6 +6,7 @@ import (
 	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/everstake/elrond-monitor-backend/smodels"
 	"github.com/shopspring/decimal"
+	"time"
 )
 
 func (s *ServiceFacade) GetTransactions(filter filters.Transactions) (items smodels.Pagination, err error) {
@@ -15,21 +16,22 @@ func (s *ServiceFacade) GetTransactions(filter filters.Transactions) (items smod
 	}
 	txs := make([]smodels.Tx, len(dTxs))
 	for i, tx := range dTxs {
+		val, _ := decimal.NewFromString(tx.Value)
 		txs[i] = smodels.Tx{
 			Hash:          tx.Hash,
 			Status:        tx.Status,
 			From:          tx.Sender,
 			To:            tx.Receiver,
-			Value:         tx.Value,
-			MiniblockHash: tx.MiniBlockHash,
-			ShardFrom:     tx.SenderShard,
-			ShardTo:       tx.ReceiverShard,
-			Timestamp:     smodels.NewTime(tx.CreatedAt),
+			Value:         node.ValueToEGLD(val),
+			MiniblockHash: tx.MBHash,
+			ShardFrom:     uint64(tx.SenderShard),
+			ShardTo:       uint64(tx.ReceiverShard),
+			Timestamp:     smodels.NewTime(time.Unix(int64(tx.Timestamp), 0)),
 		}
 	}
-	total, err := s.dao.GetTransactionsTotal(filter)
+	total, err := s.dao.GetTransactionsCount(filter)
 	if err != nil {
-		return items, fmt.Errorf("dao.GetTransactionsTotal: %s", err.Error())
+		return items, fmt.Errorf("dao.GetTransactionsCount: %s", err.Error())
 	}
 	return smodels.Pagination{
 		Items: txs,
@@ -48,41 +50,32 @@ func (s *ServiceFacade) GetTransaction(hash string) (tx smodels.Tx, err error) {
 	}
 	results := make([]smodels.ScResult, len(dResults))
 	for i, r := range dResults {
+		val, _ := decimal.NewFromString(dTx.Value)
 		results[i] = smodels.ScResult{
 			Hash:    r.Hash,
-			From:    r.From,
-			To:      r.To,
-			Value:   r.Value,
-			Data:    r.Data,
-			Message: r.Message,
+			From:    r.Sender,
+			To:      r.Receiver,
+			Value:   node.ValueToEGLD(val),
+			Data:    string(r.Data),
+			Message: r.ReturnMessage,
 		}
 	}
-	esTx, err := s.es.GetTx(hash)
-	if err != nil {
-		return tx, fmt.Errorf("es.GetTx: %s", err.Error())
-	}
-	fee := decimal.Zero
-	if esTx.Fee != "" {
-		fee, err = decimal.NewFromString(esTx.Fee)
-		if err != nil {
-			return tx, fmt.Errorf("decimal.NewFromString(%s): %s", esTx.Fee, err.Error())
-		}
-	}
+	val, _ := decimal.NewFromString(dTx.Value)
+	fee, _ := decimal.NewFromString(dTx.Fee)
 	return smodels.Tx{
 		Hash:          dTx.Hash,
 		Status:        dTx.Status,
 		From:          dTx.Sender,
 		To:            dTx.Receiver,
-		Value:         dTx.Value,
-		Fee:           node.ValueToEGLD(fee),
-		GasUsed:       esTx.GasUsed,
-		GasPrice:      esTx.GasPrice,
-		MiniblockHash: dTx.MiniBlockHash,
-		ShardFrom:     dTx.SenderShard,
-		ShardTo:       dTx.ReceiverShard,
-		Type:          "", // todo
+		Value:         val,
+		Fee:           fee,
+		GasUsed:       dTx.GasUsed,
+		GasPrice:      dTx.GasPrice,
+		MiniblockHash: dTx.MBHash,
+		ShardFrom:     uint64(dTx.SenderShard),
+		ShardTo:       uint64(dTx.ReceiverShard),
 		ScResults:     results,
-		Signature:     esTx.Signature,
-		Timestamp:     smodels.NewTime(dTx.CreatedAt),
+		Signature:     dTx.Signature,
+		Timestamp:     smodels.NewTime(time.Unix(int64(dTx.Timestamp), 0)),
 	}, nil
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/everstake/elrond-monitor-backend/config"
 	"github.com/everstake/elrond-monitor-backend/dao"
 	"github.com/everstake/elrond-monitor-backend/dao/dmodels"
-	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/log"
 	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/shopspring/decimal"
@@ -564,7 +563,7 @@ func (p *Parser) saving() {
 		}
 		break
 	}
-	p.setAccounts()
+	//p.setAccounts()
 
 	ticker := time.After(time.Second)
 
@@ -682,7 +681,7 @@ func (p *Parser) saving() {
 			<-time.After(repeatDelay)
 		}
 
-		p.saveNewAccounts(singleData)
+		//p.saveNewAccounts(singleData)
 		for {
 			model.Height += uint64(count)
 			err = p.dao.UpdateParserHeight(model)
@@ -697,22 +696,22 @@ func (p *Parser) saving() {
 	}
 }
 
-func (p *Parser) setAccounts() {
-	var accounts []dmodels.Account
-	var err error
-	for {
-		accounts, err = p.dao.GetAccounts(filters.Accounts{})
-		if err != nil {
-			log.Error("Parser: setAccounts: dao.GetAccounts: %s", err.Error())
-			<-time.After(repeatDelay)
-			continue
-		}
-		break
-	}
-	for _, account := range accounts {
-		p.accounts[account.Address] = struct{}{}
-	}
-}
+//func (p *Parser) setAccounts() {
+//	var accounts []dmodels.Account
+//	var err error
+//	for {
+//		accounts, err = p.dao.GetAccounts(filters.Accounts{})
+//		if err != nil {
+//			log.Error("Parser: setAccounts: dao.GetAccounts: %s", err.Error())
+//			<-time.After(repeatDelay)
+//			continue
+//		}
+//		break
+//	}
+//	for _, account := range accounts {
+//		p.accounts[account.Address] = struct{}{}
+//	}
+//}
 
 func (p *Parser) matchMiniblocks(miniblocks []dmodels.MiniBlock) (result []dmodels.MiniBlock) {
 	mp := make(map[string]dmodels.MiniBlock)

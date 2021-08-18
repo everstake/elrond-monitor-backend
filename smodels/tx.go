@@ -14,7 +14,6 @@ type Tx struct {
 	MiniblockHash string          `json:"miniblock_hash"`
 	ShardFrom     uint64          `json:"shard_from"`
 	ShardTo       uint64          `json:"shard_to"`
-	Type          string          `json:"type"`
 	ScResults     []ScResult      `json:"scResults"`
 	Signature     string          `json:"signature"`
 	Timestamp     Time            `json:"timestamp"`

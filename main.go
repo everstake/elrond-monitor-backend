@@ -1,11 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"github.com/everstake/elrond-monitor-backend/api"
 	"github.com/everstake/elrond-monitor-backend/config"
 	"github.com/everstake/elrond-monitor-backend/dao"
+	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/services"
 	"github.com/everstake/elrond-monitor-backend/services/dailystats"
+	"github.com/everstake/elrond-monitor-backend/services/es"
 	"github.com/everstake/elrond-monitor-backend/services/modules"
 	"github.com/everstake/elrond-monitor-backend/services/parser"
 	"github.com/everstake/elrond-monitor-backend/services/scheduler"
@@ -29,6 +32,43 @@ func main() {
 	if err != nil {
 		log.Fatalf("config.GetConfigFromFile: %s", err.Error())
 	}
+
+	e, err := es.NewClient(cfg.ElasticSearch.Address)
+	if err != nil {
+		log.Fatalf("es.NewClient: %s", err.Error())
+	}
+	//fmt.Println(e.GetBlocks(filters.Blocks{
+	//	Pagination: filters.Pagination{
+	//		Limit: 10,
+	//		Page:  0,
+	//	},
+	//	Nonce: 5526152,
+	//	Shard: []uint64{0},
+	//}))
+
+	//txs, err := e.GetTransactions(filters.Transactions{
+	//	Pagination: filters.Pagination{
+	//		Limit: 10,
+	//		Page:  0,
+	//	},
+	//	MiniBlock: "751a18c1775541958f0af790e4f81ae1623c2532cb2c0f63f398dae1723f3c2d",
+	//})
+	//if err != nil {
+	//	fmt.Println(err)
+	//}
+	//for _, tx := range txs {
+	//	fmt.Println(tx.Hash)
+	//}
+
+	fmt.Println(e.GetTransactionsCount(filters.Transactions{
+		Pagination: filters.Pagination{
+			Limit: 10,
+			Page:  0,
+		},
+		Address: "erd1w4apvcpg7vpkzry0rwyfycpdjquutea4aswwq3pep7khvqaen9lslua6h3",
+	}))
+
+	return
 
 	d, err := dao.NewDAO(cfg)
 	if err != nil {

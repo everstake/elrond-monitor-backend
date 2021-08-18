@@ -5,7 +5,6 @@ import (
 	"github.com/everstake/elrond-monitor-backend/config"
 	"github.com/everstake/elrond-monitor-backend/dao"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
-	"github.com/everstake/elrond-monitor-backend/services/es"
 	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/everstake/elrond-monitor-backend/smodels"
 	"github.com/shopspring/decimal"
@@ -46,7 +45,6 @@ type (
 		dao           dao.DAO
 		cfg           config.Config
 		node          node.APIi
-		es            *es.Client
 		networkConfig node.NetworkConfig
 		parser        parser
 	}
@@ -58,16 +56,11 @@ func NewServices(d dao.DAO, cfg config.Config, p parser) (svc Services, err erro
 	if err != nil {
 		return nil, fmt.Errorf("GetNetworkConfig: %s", err.Error())
 	}
-	elastic, err := es.NewClient(cfg.ElasticSearch.Address)
-	if err != nil {
-		return nil, fmt.Errorf("es.NewClient: %s", err.Error())
-	}
 	return &ServiceFacade{
 		dao:           d,
 		cfg:           cfg,
 		node:          n,
 		networkConfig: nCfg,
 		parser:        p,
-		es:            elastic,
 	}, nil
 }
