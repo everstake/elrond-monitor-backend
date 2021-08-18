@@ -6,8 +6,10 @@ import (
 	"github.com/ElrondNetwork/elastic-indexer-go/data"
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esutil"
+	"github.com/everstake/elrond-monitor-backend/dao/derrors"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"io/ioutil"
+	"net/http"
 	"strings"
 )
 
@@ -36,6 +38,14 @@ type (
 	CountResponse struct {
 		Count uint64 `json:"count"`
 	}
+	Tx struct {
+		data.Transaction
+		SCResults []SCResult `json:"scResults"`
+	}
+	SCResult struct {
+		data.ScResult
+		ResultHash string `json:"hash"`
+	}
 	obj map[string]interface{}
 )
 
@@ -60,11 +70,15 @@ func (c *Client) GetBlocks(filter filters.Blocks) (blocks []data.Block, err erro
 			"timestamp": obj{"order": "desc"},
 		},
 	}
-	if filter.Nonce != 0 {
-		addQuery(query, filter.Nonce, "query", "match", "nonce")
-	}
-	if len(filter.Shard) > 0 {
-		addQuery(query, filter.Shard[0], "query", "match", "shard")
+	if filter.Nonce != 0 && len(filter.Shard) != 0 {
+		query["query"] = obj{
+			"bool": obj{
+				"must": []obj{
+					{"match": obj{"nonce": filter.Nonce}},
+					{"match": obj{"shardId": filter.Shard[0]}},
+				},
+			},
+		}
 	}
 	if filter.Limit != 0 {
 		query["size"] = filter.Limit
@@ -94,7 +108,7 @@ func (c *Client) GetBlocksCount(filter filters.Blocks) (total uint64, err error)
 	return total, err
 }
 
-func (c *Client) GetTransaction(hash string) (tx data.Transaction, err error) {
+func (c *Client) GetTransaction(hash string) (tx Tx, err error) {
 	err = c.get("transactions", hash, &tx)
 	return tx, err
 }
@@ -146,7 +160,7 @@ func (c *Client) GetMiniblock(hash string) (miniblock data.Miniblock, err error)
 	return miniblock, err
 }
 
-func (c *Client) GetMiniblocks(filter filters.MiniBlocks) (txs []data.Miniblock, err error) {
+func (c *Client) GetMiniblocks(filter filters.MiniBlocks) (blocks []data.Miniblock, err error) {
 	query := obj{
 		"sort": obj{
 			"timestamp": obj{"order": "desc"},
@@ -158,42 +172,20 @@ func (c *Client) GetMiniblocks(filter filters.MiniBlocks) (txs []data.Miniblock,
 			{"match": obj{"receiverBlockHash": filter.ParentBlockHash}},
 		}}
 	}
-	keys, err := c.search("miniblocks", query, &txs)
-	if len(keys) != len(txs) {
-		return txs, fmt.Errorf("wrong number of keys")
+	keys, err := c.search("miniblocks", query, &blocks)
+	if len(keys) != len(blocks) {
+		return blocks, fmt.Errorf("wrong number of keys")
 	}
 	for i, key := range keys {
-		txs[i].Hash = key
+		blocks[i].Hash = key
 	}
-	return txs, err
-}
-
-func (c *Client) GetSCResults(txHash string) (scs []data.ScResult, err error) {
-	query := obj{
-		"sort": obj{
-			"timestamp": obj{"order": "desc"},
-		},
-		"query": obj{
-			"match": obj{
-				"originalTxHash": txHash,
-			},
-		},
-	}
-	keys, err := c.search("scresults", query, &scs)
-	if len(keys) != len(scs) {
-		return scs, fmt.Errorf("wrong number of keys")
-	}
-	for i, key := range keys {
-		scs[i].Hash = key
-	}
-	return scs, err
+	return blocks, err
 }
 
 func (c *Client) GetAccount(address string) (acc data.AccountInfo, err error) {
-	err = c.get("miniblocks", address, &acc)
+	err = c.get("accounts", address, &acc)
 	return acc, err
 }
-
 
 func (c *Client) GetAccounts(filter filters.Accounts) (accounts []data.AccountInfo, err error) {
 	query := obj{
@@ -217,12 +209,10 @@ func (c *Client) GetAccounts(filter filters.Accounts) (accounts []data.AccountIn
 	return accounts, err
 }
 
-
 func (c *Client) GetAccountsCount(filter filters.Accounts) (total uint64, err error) {
 	total, err = c.count("accounts", obj{})
 	return total, err
 }
-
 
 func (c *Client) ValidatorsKeys(shard uint64, epoch uint64) (keys data.ValidatorsPublicKeys, err error) {
 	err = c.get("validators", fmt.Sprintf("%d_%d", shard, epoch), &keys)
@@ -239,6 +229,9 @@ func (c *Client) search(index string, query map[string]interface{}, dst interfac
 	}
 	defer resp.Body.Close()
 	if resp.IsError() {
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
 		return keys, fmt.Errorf(resp.String())
 	}
 	d, err := ioutil.ReadAll(resp.Body)
@@ -273,6 +266,9 @@ func (c *Client) count(index string, query map[string]interface{}) (total uint64
 	}
 	defer resp.Body.Close()
 	if resp.IsError() {
+		if resp.StatusCode == http.StatusNotFound {
+			return 0, nil
+		}
 		return total, fmt.Errorf(resp.String())
 	}
 	d, err := ioutil.ReadAll(resp.Body)
@@ -294,6 +290,9 @@ func (c *Client) get(index string, id string, dst interface{}) error {
 	}
 	defer resp.Body.Close()
 	if resp.IsError() {
+		if resp.StatusCode == http.StatusNotFound {
+			return derrors.NotFound
+		}
 		return fmt.Errorf(resp.String())
 	}
 	d, err := ioutil.ReadAll(resp.Body)

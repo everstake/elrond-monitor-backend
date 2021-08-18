@@ -8,12 +8,12 @@ import (
 )
 
 func (api *API) GetTransaction(w http.ResponseWriter, r *http.Request) {
-	address, ok := mux.Vars(r)["hash"]
-	if !ok || address == "" {
+	hash, ok := mux.Vars(r)["hash"]
+	if !ok || hash == "" {
 		jsonBadRequest(w, "invalid address")
 		return
 	}
-	resp, err := api.svc.GetTransaction(address)
+	resp, err := api.svc.GetTransaction(hash)
 	if err != nil {
 		log.Error("API GetTransaction: svc.GetTransaction: %s", err.Error())
 		jsonError(err, w)

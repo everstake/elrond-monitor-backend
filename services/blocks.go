@@ -2,16 +2,25 @@ package services
 
 import (
 	"fmt"
+	"github.com/everstake/elrond-monitor-backend/dao/derrors"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/everstake/elrond-monitor-backend/smodels"
 	"github.com/shopspring/decimal"
+	"net/http"
 	"time"
 )
 
 func (s *ServiceFacade) GetBlock(hash string) (block smodels.Block, err error) {
 	dBlock, err := s.dao.GetBlock(hash)
 	if err != nil {
+		if err == derrors.NotFound {
+			return block, smodels.Error{
+				Err:      err.Error(),
+				Msg:      "block not found",
+				HttpCode: http.StatusNotFound,
+			}
+		}
 		return block, fmt.Errorf("dao.GetBlock: %s", err.Error())
 	}
 	dMiniBlocks, err := s.dao.GetMiniblocks(filters.MiniBlocks{ParentBlockHash: dBlock.Hash})
@@ -44,7 +53,7 @@ func (s *ServiceFacade) GetBlock(hash string) (block smodels.Block, err error) {
 		}
 	}
 	block = smodels.Block{
-		Hash:                  dBlock.Hash,
+		Hash:                  hash,
 		Nonce:                 dBlock.Nonce,
 		Shard:                 uint64(dBlock.ShardID),
 		Epoch:                 uint64(dBlock.Epoch),
@@ -119,6 +128,13 @@ func (s *ServiceFacade) GetBlockByNonce(shard uint64, nonce uint64) (block smode
 func (s *ServiceFacade) GetMiniBlock(hash string) (block smodels.Miniblock, err error) {
 	dBlock, err := s.dao.GetMiniblock(hash)
 	if err != nil {
+		if err == derrors.NotFound {
+			return block, smodels.Error{
+				Err:      err.Error(),
+				Msg:      "miniblock not found",
+				HttpCode: http.StatusNotFound,
+			}
+		}
 		return block, fmt.Errorf("dao.GetMiniblock: %s", err.Error())
 	}
 	dTxs, err := s.dao.GetTransactions(filters.Transactions{MiniBlock: hash})

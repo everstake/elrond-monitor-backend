@@ -12,7 +12,6 @@ type (
 		RewardsClaimed   decimal.Decimal          `json:"rewards_claimed"`
 		ClaimableRewards decimal.Decimal          `json:"claimable_rewards"`
 		StakingProviders []AccountStakingProvider `json:"staking_providers"`
-		IsSmartContract  bool                     `json:"is_smart_contract"`
 	}
 	AccountStakingProvider struct {
 		Provider string          `json:"provider"`
