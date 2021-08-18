@@ -189,13 +189,13 @@ func (c *Client) GetSCResults(txHash string) (scs []data.ScResult, err error) {
 	return scs, err
 }
 
-func (c *Client) GetAccount(address string) (acc data.Account, err error) {
+func (c *Client) GetAccount(address string) (acc data.AccountInfo, err error) {
 	err = c.get("miniblocks", address, &acc)
 	return acc, err
 }
 
 
-func (c *Client) GetAccounts(filter filters.Accounts) (accounts []data.Account, err error) {
+func (c *Client) GetAccounts(filter filters.Accounts) (accounts []data.AccountInfo, err error) {
 	query := obj{
 		"sort": obj{
 			"balanceNum": obj{"order": "desc"},
@@ -207,19 +207,19 @@ func (c *Client) GetAccounts(filter filters.Accounts) (accounts []data.Account, 
 	if filter.Offset() != 0 {
 		query["from"] = filter.Offset()
 	}
-	_, err = c.search("accounts", query, &accounts)
-	//if len(keys) != len(accounts) {
-	//	return accounts, fmt.Errorf("wrong number of keys")
-	//}
-	//for i, key := range keys {
-	//	accounts[i].Hash = key
-	//}
+	keys, err := c.search("accounts", query, &accounts)
+	if len(keys) != len(accounts) {
+		return accounts, fmt.Errorf("wrong number of keys")
+	}
+	for i, key := range keys {
+		accounts[i].Address = key
+	}
 	return accounts, err
 }
 
 
 func (c *Client) GetAccountsCount(filter filters.Accounts) (total uint64, err error) {
-	total, err = c.count("accounts", nil)
+	total, err = c.count("accounts", obj{})
 	return total, err
 }
 
@@ -245,7 +245,6 @@ func (c *Client) search(index string, query map[string]interface{}, dst interfac
 	if err != nil {
 		return keys, fmt.Errorf("ioutil.ReadAll: %s", err.Error())
 	}
-	fmt.Println(string(d))
 	var searchResp SearchResponse
 	err = json.Unmarshal(d, &searchResp)
 	if err != nil {

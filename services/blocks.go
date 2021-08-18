@@ -77,12 +77,18 @@ func (s *ServiceFacade) GetBlocks(filter filters.Blocks) (items smodels.Paginati
 	blocks := make([]smodels.Block, len(dBlocks))
 	for i, b := range dBlocks {
 		blocks[i] = smodels.Block{
-			Hash:      b.Hash,
-			Nonce:     b.Nonce,
-			Shard:     uint64(b.ShardID),
-			Epoch:     uint64(b.Epoch),
-			TxCount:   uint64(b.TxCount),
-			Timestamp: smodels.NewTime(time.Unix(int64(b.Timestamp), 0)),
+			Hash:                  b.Hash,
+			Nonce:                 b.Nonce,
+			Shard:                 uint64(b.ShardID),
+			Epoch:                 uint64(b.Epoch),
+			TxCount:               uint64(b.TxCount),
+			Size:                  b.Size,
+			Miniblocks:            b.MiniBlocksHashes,
+			NotarizedBlocksHashes: b.NotarizedBlocksHashes,
+			PubKeyBitmap:          b.PubKeyBitmap,
+			StateRootHash:         b.StateRootHash,
+			PrevHash:              b.PrevHash,
+			Timestamp:             smodels.NewTime(time.Unix(int64(b.Timestamp), 0)),
 		}
 	}
 	total, err := s.dao.GetBlocksCount(filter)
@@ -122,20 +128,26 @@ func (s *ServiceFacade) GetMiniBlock(hash string) (block smodels.Miniblock, err 
 	txs := make([]smodels.Tx, len(dTxs))
 	for i, tx := range dTxs {
 		val, _ := decimal.NewFromString(tx.Value)
+		fee, _ := decimal.NewFromString(tx.Fee)
 		txs[i] = smodels.Tx{
 			Hash:          tx.Hash,
 			Status:        tx.Status,
 			From:          tx.Sender,
 			To:            tx.Receiver,
 			Value:         node.ValueToEGLD(val),
+			Fee:           node.ValueToEGLD(fee),
+			GasUsed:       tx.GasUsed,
+			GasPrice:      tx.GasPrice,
 			MiniblockHash: tx.MBHash,
 			ShardFrom:     uint64(tx.SenderShard),
 			ShardTo:       uint64(tx.ReceiverShard),
+			ScResults:     nil,
+			Signature:     tx.Signature,
 			Timestamp:     smodels.NewTime(time.Unix(int64(tx.Timestamp), 0)),
 		}
 	}
 	return smodels.Miniblock{
-		Hash:          dBlock.Hash,
+		Hash:          hash,
 		ShardFrom:     uint64(dBlock.SenderShardID),
 		ShardTo:       uint64(dBlock.ReceiverShardID),
 		BlockSender:   dBlock.SenderBlockHash,

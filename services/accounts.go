@@ -15,17 +15,18 @@ func (s *ServiceFacade) GetAccounts(filter filters.Accounts) (items smodels.Pagi
 	}
 	accounts := make([]smodels.Account, len(dAccounts))
 	for i, a := range dAccounts {
-		userStake, err := s.node.GetUserStake(string(a.UserAccount.AddressBytes()))
+		userStake, err := s.node.GetUserStake(a.Address)
 		if err != nil {
 			return items, fmt.Errorf("node.GetUserStake: %s", err.Error())
 		}
-		balance := decimal.NewFromBigInt(a.UserAccount.GetBalance(), 0)
+		balance, _ := decimal.NewFromString(a.Balance)
 		accounts[i] = smodels.Account{
-			Address:     string(a.UserAccount.AddressBytes()),
-			Balance:     node.ValueToEGLD(balance),
-			Nonce:       a.UserAccount.GetNonce(),
-			Delegated:   node.ValueToEGLD(userStake.ActiveStake),
-			Undelegated: node.ValueToEGLD(userStake.UnstakedStake),
+			Address:         a.Address,
+			Balance:         node.ValueToEGLD(balance),
+			Nonce:           a.Nonce,
+			Delegated:       node.ValueToEGLD(userStake.ActiveStake),
+			Undelegated:     node.ValueToEGLD(userStake.UnstakedStake),
+			IsSmartContract: a.IsSmartContract,
 		}
 	}
 	total, err := s.dao.GetAccountsCount(filter)
@@ -39,9 +40,9 @@ func (s *ServiceFacade) GetAccounts(filter filters.Accounts) (items smodels.Pagi
 }
 
 func (s *ServiceFacade) GetAccount(address string) (account smodels.Account, err error) {
-	acc, err := s.node.GetAddress(address)
+	acc, err := s.dao.GetAccount(address)
 	if err != nil {
-		return account, fmt.Errorf("node.GetAddress: %s", err.Error())
+		return account, fmt.Errorf("dao.GetAccount: %s", err.Error())
 	}
 	userStake, err := s.node.GetUserStake(address)
 	if err != nil {
@@ -59,14 +60,16 @@ func (s *ServiceFacade) GetAccount(address string) (account smodels.Account, err
 			Stake:    stake,
 		})
 	}
+	balance, _ := decimal.NewFromString(acc.Balance)
 	return smodels.Account{
 		Address:          address,
-		Balance:          node.ValueToEGLD(acc.Balance),
+		Balance:          node.ValueToEGLD(balance),
 		Nonce:            acc.Nonce,
 		Delegated:        node.ValueToEGLD(userStake.ActiveStake),
 		Undelegated:      node.ValueToEGLD(userStake.UnstakedStake),
 		RewardsClaimed:   decimal.Zero, // todo
 		ClaimableRewards: node.ValueToEGLD(claimableRewards),
 		StakingProviders: stakeProviders,
+		IsSmartContract:  acc.IsSmartContract,
 	}, nil
 }

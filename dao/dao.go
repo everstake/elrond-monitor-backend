@@ -75,8 +75,8 @@ type (
 		GetMiniblocks(filter filters.MiniBlocks) (txs []data.Miniblock, err error)
 		GetSCResults(txHash string) (scs []data.ScResult, err error)
 		ValidatorsKeys(shard uint64, epoch uint64) (keys data.ValidatorsPublicKeys, err error)
-		GetAccount(address string) (acc data.Account, err error)
-		GetAccounts(filter filters.Accounts) (accounts []data.Account, err error)
+		GetAccount(address string) (acc data.AccountInfo, err error)
+		GetAccounts(filter filters.Accounts) (accounts []data.AccountInfo, err error)
 		GetAccountsCount(filter filters.Accounts) (total uint64, err error)
 	}
 
