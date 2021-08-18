@@ -2,35 +2,43 @@ package smodels
 
 import "github.com/shopspring/decimal"
 
-type Validator struct {
-	Identity     string                 `json:"identity"`
-	Name         string                 `json:"name"`
-	Description  string                 `json:"description"`
-	Avatar       string                 `json:"avatar"`
-	Score        uint64                 `json:"score"`
-	Validators   uint64                 `json:"validators"`
-	Stake        string                 `json:"stake"`
-	TopUp        string                 `json:"topUp"`
-	Locked       string                 `json:"locked"`
-	Distribution map[string]interface{} `json:"distribution"`
-	Providers    []string               `json:"providers"`
-	StakePercent decimal.Decimal        `json:"stake_percent"`
-	Rank         uint64                 `json:"rank"`
+type Identity struct {
+	Identity     string          `json:"identity"`
+	Name         string          `json:"name"`
+	Avatar       string          `json:"avatar"`
+	Description  string          `json:"description"`
+	Locked       decimal.Decimal `json:"locked"`
+	Rank         uint64          `json:"rank"`
+	Score        uint64          `json:"score"`
+	Stake        decimal.Decimal `json:"stake"`
+	StakePercent float64         `json:"stake_percent"`
+	TopUp        decimal.Decimal `json:"top_up"`
+	Validators   uint64          `json:"validators"`
+	Providers    []string        `json:"providers"`
 }
 
 type StakingProvider struct {
-	Provider         string          `json:"provider"`
-	ServiceFee       decimal.Decimal `json:"service_fee"`
-	DelegationCap    decimal.Decimal `json:"delegation_cap"`
-	APR              decimal.Decimal `json:"apr"`
-	NumUsers         uint64          `json:"num_users"`
-	CumulatedRewards decimal.Decimal `json:"cumulated_rewards"`
-	Identity         string          `json:"identity"`
-	NumNodes         uint64          `json:"num_nodes"`
-	Stake            decimal.Decimal `json:"stake"`
-	TopUp            decimal.Decimal `json:"top_up"`
-	Locked           decimal.Decimal `json:"locked"`
-	Featured         bool            `json:"featured"`
+	Provider         string                   `json:"provider"`
+	ServiceFee       decimal.Decimal          `json:"service_fee"`
+	DelegationCap    decimal.Decimal          `json:"delegation_cap"`
+	APR              decimal.Decimal          `json:"apr"`
+	NumUsers         uint64                   `json:"num_users"`
+	CumulatedRewards decimal.Decimal          `json:"cumulated_rewards"`
+	Identity         string                   `json:"identity"`
+	Name             string                   `json:"name"`
+	NumNodes         uint64                   `json:"num_nodes"`
+	Stake            decimal.Decimal          `json:"stake"`
+	TopUp            decimal.Decimal          `json:"top_up"`
+	Locked           decimal.Decimal          `json:"locked"`
+	Featured         bool                     `json:"featured"`
+	Validator        StakingProviderValidator `json:"validator"`
+}
+
+type StakingProviderValidator struct {
+	Name         string          `json:"name"`
+	Locked       decimal.Decimal `json:"locked"`
+	StakePercent float64         `json:"stake_percent"`
+	Nodes        uint64          `json:"nodes"`
 }
 
 type SourceStakingProvider struct {

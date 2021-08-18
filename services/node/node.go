@@ -383,17 +383,26 @@ func (api *API) GetTotalStakedTopUpStakedBlsKeys(address string) (stake StakeTop
 	if err != nil {
 		return stake, fmt.Errorf("ContractValueToDecimal(staked): %s", err.Error())
 	}
+	stake.Stake = stake.Stake.Sub(stake.TopUp)
 	numNodes, err := ContractValueToDecimal(rows[2])
 	if err != nil {
 		return stake, fmt.Errorf("ContractValueToDecimal(numNodes): %s", err.Error())
 	}
 	stake.NumNodes = numNodes.BigInt().Uint64()
+	if stake.Stake.Equal(decimal.Zero) && stake.NumNodes == 0 {
+		stake.TopUp = decimal.Zero
+	}
 	for _, b := range rows[3:] {
 		bts, _ := base64.StdEncoding.DecodeString(b)
 		stake.Blses = append(stake.Blses, hex.EncodeToString(bts))
 	}
 	stake.Address = address
 	stake.Locked = stake.Stake.Add(stake.TopUp)
+	if stake.NumNodes > 0 {
+		stake.Stake = stake.Stake.Div(decimal.New(int64(stake.NumNodes), 0))
+		stake.TopUp = stake.TopUp.Div(decimal.New(int64(stake.NumNodes), 0))
+		stake.Locked = stake.Locked.Div(decimal.New(int64(stake.NumNodes), 0))
+	}
 	return stake, nil
 }
 
