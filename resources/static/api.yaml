@@ -36,6 +36,29 @@ paths:
                     type: number
                   total_accounts:
                     type: number
+  /stats/validators:
+    get:
+      tags:
+        - Network
+      summary: Get validator stats
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  active_stake:
+                    type: number
+                  validators:
+                    type: number
+                  observer_nodes:
+                    type: number
+                  staking_apr:
+                    type: number
+                  queue:
+                    type: number
   /epoch:
     get:
       tags:
@@ -600,10 +623,7 @@ paths:
               schema:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    provider:
-                      type: string
+                  $ref: '#/components/schemas/staking_provider'
         404:
           description: "Not found"
   /staking/provider/{address}:
@@ -623,14 +643,32 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  provider:
-                    type: string
+                $ref: '#/components/schemas/staking_provider'
         404:
           description: "Not found"
   /nodes:
     get:
+      parameters:
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: identity
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: provider
+          required: false
+          schema:
+            type: string
       tags:
         - "Staking"
       summary: get nodes
@@ -647,10 +685,7 @@ paths:
                   items:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        tx_hash:
-                          type: string
+                      $ref: '#/components/schemas/node'
         404:
           description: "Not found"
   /node/{key}:
@@ -670,10 +705,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  provider:
-                    type: string
+                $ref: '#/components/schemas/node'
         404:
           description: "Not found"
   /validators:
@@ -736,6 +768,16 @@ paths:
           required: false
           schema:
             type: number
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: to
+          required: false
+          schema:
+            type: number
       responses:
         200:
           description: "Success"
@@ -751,6 +793,100 @@ paths:
       parameters:
         - in: query
           name: limit
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: to
+          required: false
+          schema:
+            type: number
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rangeData'
+  /price/range:
+    get:
+      tags:
+        - Statistics
+      summary: Get daily price
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: to
+          required: false
+          schema:
+            type: number
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rangeData'
+  /stake/range:
+    get:
+      tags:
+        - Statistics
+      summary: Get daily total stake
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: to
+          required: false
+          schema:
+            type: number
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rangeData'
+  /delegators/range:
+    get:
+      tags:
+        - Statistics
+      summary: Get daily total delegators
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: to
           required: false
           schema:
             type: number
@@ -828,6 +964,71 @@ components:
           type: array
           items:
             type: string
+    staking_provider:
+      type: object
+      properties:
+        provider:
+          type: string
+        service_fee:
+          type: number
+        delegation_cap:
+          type: number
+        apr:
+          type: number
+        num_users:
+          type: number
+        cumulated_rewards:
+          type: number
+        identity:
+          type: string
+        name:
+          type: string
+        num_nodes:
+          type: string
+        stake:
+          type: number
+        top_up:
+          type: number
+        locked:
+          type: number
+        featured:
+          type: boolean
+        validator:
+          type: object
+          properties:
+            name:
+              type: string
+            locked:
+              type: number
+            stake_percent:
+              type: number
+            nodes:
+              type: number
+    node:
+      type: object
+      properties:
+        tx_hash:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        owner:
+          type: string
+        provider:
+          type: string
+        stake:
+          type: number
+        topUp:
+          type: number
+        locked:
+          type: number
+        position:
+          type: number
+        upTime:
+          type: number
+        downTime:
+          type: number
     rangeData:
       type: array
       items:

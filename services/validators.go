@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/everstake/elrond-monitor-backend/dao/dmodels"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/log"
 	"github.com/everstake/elrond-monitor-backend/smodels"
@@ -13,13 +14,9 @@ import (
 	"time"
 )
 
-const (
-	validatorsStorageKey          = "validators"
-)
-
 func (s *ServiceFacade) GetValidators(filter filters.Validators) (pagination smodels.Pagination, err error) {
 	var validators []smodels.Identity
-	err = s.getCache(validatorsStorageKey, &validators)
+	err = s.getCache(dmodels.ValidatorsStorageKey, &validators)
 	if err != nil {
 		return pagination, fmt.Errorf("getCache: %s", err.Error())
 	}
@@ -38,7 +35,7 @@ func (s *ServiceFacade) GetValidators(filter filters.Validators) (pagination smo
 
 func (s *ServiceFacade) GetValidator(identity string) (validator smodels.Identity, err error) {
 	var validators []smodels.Identity
-	err = s.getCache(validatorsStorageKey, &validators)
+	err = s.getCache(dmodels.ValidatorsStorageKey, &validators)
 	if err != nil {
 		return validator, fmt.Errorf("getCache: %s", err.Error())
 	}
@@ -64,7 +61,7 @@ func (s *ServiceFacade) UpdateValidators() {
 
 func (s *ServiceFacade) updateValidators() error {
 	var nodes []smodels.Node
-	err := s.getCache(nodesStorageKey, &nodes)
+	err := s.getCache(dmodels.NodesStorageKey, &nodes)
 	if err != nil {
 		return fmt.Errorf("getCache(nodes): %s", err.Error())
 	}
@@ -136,7 +133,7 @@ func (s *ServiceFacade) updateValidators() error {
 	for i := range identities {
 		identities[i].Rank = uint64(i + 1)
 	}
-	err = s.setCache(validatorsStorageKey, identities)
+	err = s.setCache(dmodels.ValidatorsStorageKey, identities)
 	if err != nil {
 		return fmt.Errorf("setCache: %s", err.Error())
 	}

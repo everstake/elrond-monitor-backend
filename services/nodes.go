@@ -2,15 +2,12 @@ package services
 
 import (
 	"fmt"
+	"github.com/everstake/elrond-monitor-backend/dao/dmodels"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/log"
 	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/everstake/elrond-monitor-backend/smodels"
 	"strings"
-)
-
-const (
-	nodesStorageKey = "nodes"
 )
 
 func (s *ServiceFacade) UpdateNodes() {
@@ -112,7 +109,7 @@ func (s *ServiceFacade) updateNodes() error {
 	}
 
 	var providers []smodels.StakingProvider
-	err = s.getCache(stakingProvidersStorageKey, &providers)
+	err = s.getCache(dmodels.StakingProvidersStorageKey, &providers)
 	if err != nil {
 		log.Warn("updateNodes: getCache(providers): %s", err.Error())
 	}
@@ -165,7 +162,7 @@ func (s *ServiceFacade) updateNodes() error {
 		nodes = append(nodes, n)
 	}
 
-	err = s.setCache(nodesStorageKey, nodes)
+	err = s.setCache(dmodels.NodesStorageKey, nodes)
 	if err != nil {
 		return fmt.Errorf("setCache: %s", err.Error())
 	}
@@ -174,7 +171,7 @@ func (s *ServiceFacade) updateNodes() error {
 
 func (s *ServiceFacade) GetNodes(filter filters.Nodes) (pagination smodels.Pagination, err error) {
 	var nodes []smodels.Node
-	err = s.getCache(nodesStorageKey, &nodes)
+	err = s.getCache(dmodels.NodesStorageKey, &nodes)
 	if err != nil {
 		return pagination, fmt.Errorf("getCache: %s", err.Error())
 	}
@@ -203,7 +200,7 @@ func (s *ServiceFacade) GetNodes(filter filters.Nodes) (pagination smodels.Pagin
 
 func (s *ServiceFacade) GetNode(key string) (node smodels.Node, err error) {
 	var nodes []smodels.Node
-	err = s.getCache(nodesStorageKey, &nodes)
+	err = s.getCache(dmodels.NodesStorageKey, &nodes)
 	if err != nil {
 		return node, fmt.Errorf("getCache: %s", err.Error())
 	}

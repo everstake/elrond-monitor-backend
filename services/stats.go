@@ -13,15 +13,10 @@ import (
 	"net/http"
 )
 
-const (
-	statsStorageKey          = "stats"
-	validatorStatsStorageKey = "validator_stats"
-	validatorsMapSource      = "https://internal-api.elrond.com/markers"
-	validatorsMapStorageKey  = "validators_map"
-)
+const validatorsMapSource = "https://internal-api.elrond.com/markers"
 
 func (s *ServiceFacade) GetStats() (stats smodels.Stats, err error) {
-	err = s.getCache(statsStorageKey, &stats)
+	err = s.getCache(dmodels.StatsStorageKey, &stats)
 	if err != nil {
 		return stats, fmt.Errorf("getCache: %s", err.Error())
 	}
@@ -29,7 +24,7 @@ func (s *ServiceFacade) GetStats() (stats smodels.Stats, err error) {
 }
 
 func (s *ServiceFacade) GetValidatorStats() (stats smodels.ValidatorStats, err error) {
-	err = s.getCache(validatorStatsStorageKey, &stats)
+	err = s.getCache(dmodels.ValidatorStatsStorageKey, &stats)
 	if err != nil {
 		return stats, fmt.Errorf("getCache: %s", err.Error())
 	}
@@ -68,7 +63,7 @@ func (s *ServiceFacade) updateStats() error {
 	if err != nil {
 		return fmt.Errorf("dao.GetTransactionsCount: %s", err.Error())
 	}
-	err = s.setCache(statsStorageKey, smodels.Stats{
+	err = s.setCache(dmodels.StatsStorageKey, smodels.Stats{
 		Price:             marketData.Price,
 		PriceChange:       marketData.PriceChange,
 		TradingVolume:     marketData.TradingVolume24h,
@@ -88,23 +83,26 @@ func (s *ServiceFacade) updateStats() error {
 
 func (s *ServiceFacade) updateValidatorStats() error {
 	var validators []smodels.Identity
-	err := s.getCache(validatorsStorageKey, &validators)
+	err := s.getCache(dmodels.ValidatorsStorageKey, &validators)
 	if err != nil {
-		return fmt.Errorf("getCache(%s): %s", validatorsStorageKey, err.Error())
+		return fmt.Errorf("getCache(%s): %s", dmodels.ValidatorsStorageKey, err.Error())
 	}
 	var nodes []smodels.Node
-	err = s.getCache(nodesStorageKey, &nodes)
+	err = s.getCache(dmodels.NodesStorageKey, &nodes)
 	if err != nil {
-		return fmt.Errorf("getCache(%s): %s", nodesStorageKey, err.Error())
+		return fmt.Errorf("getCache(%s): %s", dmodels.NodesStorageKey, err.Error())
 	}
 	var providers []smodels.StakingProvider
-	err = s.getCache(stakingProvidersStorageKey, &providers)
+	err = s.getCache(dmodels.StakingProvidersStorageKey, &providers)
 	if err != nil {
-		return fmt.Errorf("getCache(%s): %s", stakingProvidersStorageKey, err.Error())
+		return fmt.Errorf("getCache(%s): %s", dmodels.StakingProvidersStorageKey, err.Error())
 	}
 	var apr decimal.Decimal
 	for _, p := range providers {
 		apr = apr.Add(p.APR)
+	}
+	if len(providers) > 0 {
+		apr = apr.Div(decimal.New(int64(len(providers)), 0))
 	}
 	var observerNodes uint64
 	var queue uint64
@@ -113,16 +111,16 @@ func (s *ServiceFacade) updateValidatorStats() error {
 		if n.Type == smodels.NodeTypeObserver {
 			observerNodes++
 		}
-		if n.Type == smodels.NodeStatusQueued {
+		if n.Status == smodels.NodeStatusQueued {
 			queue++
 		}
 		stake = stake.Add(n.Locked)
 	}
-	err = s.setCache(validatorStatsStorageKey, smodels.ValidatorStats{
+	err = s.setCache(dmodels.ValidatorStatsStorageKey, smodels.ValidatorStats{
 		ActiveStake:   stake,
 		Validators:    uint64(len(validators)),
 		ObserverNodes: observerNodes,
-		StakingAPR:    stake.Truncate(2),
+		StakingAPR:    apr.Truncate(2),
 		Queue:         queue,
 	})
 	if err != nil {
@@ -132,7 +130,7 @@ func (s *ServiceFacade) updateValidatorStats() error {
 }
 
 func (s *ServiceFacade) GetValidatorsMap() ([]byte, error) {
-	data, err := s.dao.GetStorageValue(validatorsMapStorageKey)
+	data, err := s.dao.GetStorageValue(dmodels.ValidatorsMapStorageKey)
 	if err != nil {
 		return nil, fmt.Errorf("dao.GetStorageValue: %s", err.Error())
 	}
@@ -156,7 +154,7 @@ func (s *ServiceFacade) updateValidatorsMap() error {
 		return fmt.Errorf("ioutil.ReadAll: %s", err.Error())
 	}
 	err = s.dao.UpdateStorageValue(dmodels.StorageItem{
-		Key:   validatorsMapStorageKey,
+		Key:   dmodels.ValidatorsMapStorageKey,
 		Value: string(data),
 	})
 	if err != nil {

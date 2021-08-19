@@ -23,6 +23,7 @@ const (
 	TotalAccountKey      = "total_accounts"
 	TotalTransactionsKey = "total_transactions"
 	TopUpAmountKey       = "top_up"
+	TotalDelegatorsKey   = "delegators"
 )
 
 type (
@@ -53,6 +54,7 @@ func NewDailyStats(cfg config.Config, d dao.DAO) (*DailyStats, error) {
 		ds.GetEconomics,
 		ds.GetTotalAccounts,
 		ds.GetTotalTransactions,
+		ds.GetTotalDelegators,
 	}
 	return ds, nil
 }

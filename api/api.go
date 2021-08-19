@@ -107,6 +107,9 @@ func (api *API) loadRoutes() {
 		{Path: "/stats", Method: http.MethodGet, Func: api.GetStats},
 		{Path: "/transactions/range", Method: http.MethodGet, Func: api.GetDailyStats(dailystats.TotalTransactionsKey)},
 		{Path: "/accounts/range", Method: http.MethodGet, Func: api.GetDailyStats(dailystats.TotalAccountKey)},
+		{Path: "/price/range", Method: http.MethodGet, Func: api.GetDailyStats(dailystats.PriceKey)},
+		{Path: "/stake/range", Method: http.MethodGet, Func: api.GetDailyStats(dailystats.TotalStakeKey)},
+		{Path: "/delegators/range", Method: http.MethodGet, Func: api.GetDailyStats(dailystats.TotalDelegatorsKey)},
 		{Path: "/epoch", Method: http.MethodGet, Func: api.GetEpoch},
 		{Path: "/validators/map", Method: http.MethodGet, Func: api.GetValidatorsMap},
 		{Path: "/stake/events", Method: http.MethodGet, Func: api.GetStakeEvents},
@@ -116,7 +119,7 @@ func (api *API) loadRoutes() {
 		{Path: "/node/{key}", Method: http.MethodGet, Func: api.GetNode},
 		{Path: "/validators", Method: http.MethodGet, Func: api.GetValidators},
 		{Path: "/validator/{identity}", Method: http.MethodGet, Func: api.GetValidator},
-		{Path: "/validator/stats", Method: http.MethodGet, Func: api.GetValidatorStats},
+		{Path: "/stats/validators", Method: http.MethodGet, Func: api.GetValidatorStats},
 	})
 
 }
