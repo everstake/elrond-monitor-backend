@@ -49,3 +49,13 @@ func (api *API) GetValidatorsMap(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
 }
+
+func (api *API) GetValidatorStats(w http.ResponseWriter, r *http.Request) {
+	resp, err := api.svc.GetValidatorStats()
+	if err != nil {
+		log.Error("API GetValidatorStats: GetValidatorStats.GetStats: %s", err.Error())
+		jsonError(err, w)
+		return
+	}
+	jsonData(w, resp)
+}

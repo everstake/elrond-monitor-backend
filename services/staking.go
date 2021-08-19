@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	stakingProvidersMapStorageKey = "staking_providers"
+	stakingProvidersStorageKey = "staking_providers"
 )
 
 func (s *ServiceFacade) GetStakeEvents(filter filters.StakeEvents) (page smodels.Pagination, err error) {
@@ -45,7 +45,7 @@ func (s *ServiceFacade) GetStakeEvents(filter filters.StakeEvents) (page smodels
 }
 
 func (s *ServiceFacade) GetStakingProviders() (providers []smodels.StakingProvider, err error) {
-	err = s.getCache(stakingProvidersMapStorageKey, &providers)
+	err = s.getCache(stakingProvidersStorageKey, &providers)
 	if err != nil {
 		return nil, fmt.Errorf("getCache: %s", err.Error())
 	}
@@ -54,7 +54,7 @@ func (s *ServiceFacade) GetStakingProviders() (providers []smodels.StakingProvid
 
 func (s *ServiceFacade) GetStakingProvider(address string) (provider smodels.StakingProvider, err error) {
 	var providers []smodels.StakingProvider
-	err = s.getCache(stakingProvidersMapStorageKey, &providers)
+	err = s.getCache(stakingProvidersStorageKey, &providers)
 	if err != nil {
 		return provider, fmt.Errorf("getCache: %s", err.Error())
 	}
@@ -165,7 +165,7 @@ func (s *ServiceFacade) updateStakingProviders() error {
 	sort.Slice(providers, func(i, j int) bool {
 		return providers[i].Locked.GreaterThan(providers[j].Locked)
 	})
-	err = s.setCache(stakingProvidersMapStorageKey, providers)
+	err = s.setCache(stakingProvidersStorageKey, providers)
 	if err != nil {
 		return fmt.Errorf("setCache: %s", err.Error())
 	}

@@ -71,7 +71,6 @@ func (api *API) GetNodes(w http.ResponseWriter, r *http.Request) {
 	jsonData(w, nodes)
 }
 
-
 func (api *API) GetValidator(w http.ResponseWriter, r *http.Request) {
 	identity, ok := mux.Vars(r)["identity"]
 	if !ok || identity == "" {

@@ -112,7 +112,7 @@ func (s *ServiceFacade) updateNodes() error {
 	}
 
 	var providers []smodels.StakingProvider
-	err = s.getCache(stakingProvidersMapStorageKey, &providers)
+	err = s.getCache(stakingProvidersStorageKey, &providers)
 	if err != nil {
 		log.Warn("updateNodes: getCache(providers): %s", err.Error())
 	}

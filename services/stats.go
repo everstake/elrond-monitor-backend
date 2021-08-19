@@ -8,14 +8,16 @@ import (
 	"github.com/everstake/elrond-monitor-backend/services/market"
 	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/everstake/elrond-monitor-backend/smodels"
+	"github.com/shopspring/decimal"
 	"io/ioutil"
 	"net/http"
 )
 
 const (
-	statsStorageKey         = "stats"
-	validatorsMapSource     = "https://internal-api.elrond.com/markers"
-	validatorsMapStorageKey = "validators_map"
+	statsStorageKey          = "stats"
+	validatorStatsStorageKey = "validator_stats"
+	validatorsMapSource      = "https://internal-api.elrond.com/markers"
+	validatorsMapStorageKey  = "validators_map"
 )
 
 func (s *ServiceFacade) GetStats() (stats smodels.Stats, err error) {
@@ -26,10 +28,22 @@ func (s *ServiceFacade) GetStats() (stats smodels.Stats, err error) {
 	return stats, nil
 }
 
+func (s *ServiceFacade) GetValidatorStats() (stats smodels.ValidatorStats, err error) {
+	err = s.getCache(validatorStatsStorageKey, &stats)
+	if err != nil {
+		return stats, fmt.Errorf("getCache: %s", err.Error())
+	}
+	return stats, nil
+}
+
 func (s *ServiceFacade) UpdateStats() {
 	err := s.updateStats()
 	if err != nil {
 		log.Error("updateStats: %s", err.Error())
+	}
+	err = s.updateValidatorStats()
+	if err != nil {
+		log.Error("updateValidatorStats: %s", err.Error())
 	}
 }
 
@@ -65,6 +79,51 @@ func (s *ServiceFacade) updateStats() error {
 		Height:            status.ErdNonce,
 		TotalTxs:          txsTotal,
 		TotalAccounts:     accountsTotal,
+	})
+	if err != nil {
+		return fmt.Errorf("setCache: %s", err.Error())
+	}
+	return nil
+}
+
+func (s *ServiceFacade) updateValidatorStats() error {
+	var validators []smodels.Identity
+	err := s.getCache(validatorsStorageKey, &validators)
+	if err != nil {
+		return fmt.Errorf("getCache(%s): %s", validatorsStorageKey, err.Error())
+	}
+	var nodes []smodels.Node
+	err = s.getCache(nodesStorageKey, &nodes)
+	if err != nil {
+		return fmt.Errorf("getCache(%s): %s", nodesStorageKey, err.Error())
+	}
+	var providers []smodels.StakingProvider
+	err = s.getCache(stakingProvidersStorageKey, &providers)
+	if err != nil {
+		return fmt.Errorf("getCache(%s): %s", stakingProvidersStorageKey, err.Error())
+	}
+	var apr decimal.Decimal
+	for _, p := range providers {
+		apr = apr.Add(p.APR)
+	}
+	var observerNodes uint64
+	var queue uint64
+	stake := decimal.Zero
+	for _, n := range nodes {
+		if n.Type == smodels.NodeTypeObserver {
+			observerNodes++
+		}
+		if n.Type == smodels.NodeStatusQueued {
+			queue++
+		}
+		stake = stake.Add(n.Locked)
+	}
+	err = s.setCache(validatorStatsStorageKey, smodels.ValidatorStats{
+		ActiveStake:   stake,
+		Validators:    uint64(len(validators)),
+		ObserverNodes: observerNodes,
+		StakingAPR:    stake.Truncate(2),
+		Queue:         queue,
 	})
 	if err != nil {
 		return fmt.Errorf("setCache: %s", err.Error())

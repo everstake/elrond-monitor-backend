@@ -50,7 +50,7 @@ func main() {
 	apiServer := api.NewAPI(cfg, s, d)
 
 	sch := scheduler.NewScheduler()
-	sch.AddProcessWithInterval(s.UpdateStats, time.Minute)
+	sch.AddProcessWithInterval(s.UpdateStats, time.Minute*3)
 	sch.AddProcessWithInterval(s.UpdateValidatorsMap, time.Minute*20)
 	sch.AddProcessWithInterval(s.UpdateStakingProviders, time.Hour)
 	sch.AddProcessWithInterval(s.UpdateNodes, time.Hour)

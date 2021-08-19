@@ -116,6 +116,7 @@ func (api *API) loadRoutes() {
 		{Path: "/node/{key}", Method: http.MethodGet, Func: api.GetNode},
 		{Path: "/validators", Method: http.MethodGet, Func: api.GetValidators},
 		{Path: "/validator/{identity}", Method: http.MethodGet, Func: api.GetValidator},
+		{Path: "/validator/stats", Method: http.MethodGet, Func: api.GetValidatorStats},
 	})
 
 }

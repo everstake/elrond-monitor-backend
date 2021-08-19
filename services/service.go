@@ -36,6 +36,7 @@ type (
 		UpdateValidators()
 		GetValidators(filter filters.Validators) (pagination smodels.Pagination, err error)
 		GetValidator(identity string) (validator smodels.Identity, err error)
+		GetValidatorStats() (stats smodels.ValidatorStats, err error)
 	}
 	parser interface {
 		GetDelegations(delegator string) map[string]decimal.Decimal
