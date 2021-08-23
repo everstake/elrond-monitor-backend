@@ -710,6 +710,17 @@ paths:
           description: "Not found"
   /validators:
     get:
+      parameters:
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
       tags:
         - "Staking"
       summary: get validators

@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/everstake/elrond-monitor-backend/api/ws"
 	"github.com/everstake/elrond-monitor-backend/config"
 	"github.com/everstake/elrond-monitor-backend/dao"
 	"github.com/everstake/elrond-monitor-backend/log"
@@ -25,6 +26,7 @@ type API struct {
 	cfg          config.Config
 	svc          services.Services
 	router       *mux.Router
+	WS           *ws.Hub
 	queryDecoder *schema.Decoder
 }
 
@@ -44,10 +46,13 @@ func NewAPI(cfg config.Config, svc services.Services, dao dao.DAO) *API {
 		t := smodels.NewTime(time.Unix(timestamp, 0))
 		return reflect.ValueOf(t)
 	})
+	hub := ws.NewHub()
+	go hub.Run()
 	return &API{
 		cfg:          cfg,
 		dao:          dao,
 		svc:          svc,
+		WS:           hub,
 		queryDecoder: sd,
 	}
 }
@@ -76,6 +81,10 @@ func (api *API) Stop() error {
 func (api *API) loadRoutes() {
 
 	api.router = mux.NewRouter()
+
+	api.router.HandleFunc("/ws/", func(w http.ResponseWriter, r *http.Request) {
+		ws.ServeWs(api.WS, w, r)
+	})
 
 	api.router.
 		PathPrefix("/static").
