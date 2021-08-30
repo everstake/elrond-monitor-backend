@@ -17,7 +17,6 @@ func (s *ServiceFacade) GetRanking() (items []smodels.Ranking, err error) {
 	return items, nil
 }
 
-
 func (s *ServiceFacade) MakeRanking() {
 	err := s.makeRanking()
 	if err != nil {
@@ -35,8 +34,8 @@ func (s *ServiceFacade) makeRanking() error {
 	if err != nil {
 		return fmt.Errorf("dao.GetDelegationState: %s", err.Error())
 	}
-	var delegatorsMap map[string]decimal.Decimal
-	var delegationsMap map[string]map[string]decimal.Decimal // [provider][delegator]amount
+	delegatorsMap := make(map[string]decimal.Decimal)
+	delegationsMap := make(map[string]map[string]decimal.Decimal) // [provider][delegator]amount
 	for _, delegation := range delegations {
 		delegatorsMap[delegation.Delegator] = delegatorsMap[delegation.Delegator].Add(delegation.Amount)
 		if _, ok := delegationsMap[delegation.Validator]; !ok {
