@@ -36,7 +36,7 @@ func (db Postgres) CreateDailyStats(stats []dmodels.DailyStat) error {
 func (db Postgres) GetDailyStatsRange(filter filters.DailyStats) (items []dmodels.DailyStat, err error) {
 	q := squirrel.Select("*").
 		From(dmodels.DailyStatsTable).
-		OrderBy("das_created_at desc").
+		OrderBy("das_created_at").
 		Where(squirrel.Eq{"das_title": filter.Key})
 	if filter.Limit != 0 {
 		q = q.Limit(filter.Limit)

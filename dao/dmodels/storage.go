@@ -9,6 +9,7 @@ const (
 	StatsStorageKey            = "stats"
 	ValidatorStatsStorageKey   = "validator_stats"
 	ValidatorsMapStorageKey    = "validators_map"
+	RankingStorageKey          = "ranking"
 )
 
 type StorageItem struct {

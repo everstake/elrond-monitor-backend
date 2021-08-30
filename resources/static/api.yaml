@@ -768,6 +768,34 @@ paths:
       responses:
         200:
           description: "Success"
+  /providers/ranking:
+    get:
+      tags:
+        - "Statistics"
+      summary: get providers ranking
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    provider:
+                      type: string
+                    amount:
+                      type: number
+                    delegators:
+                      type: object
+                      properties:
+                        delegator_address_1:
+                          type: number
+                        delegator_address_2:
+                          type: number
+        404:
+          description: "Not found"
   /accounts/range:
     get:
       tags:

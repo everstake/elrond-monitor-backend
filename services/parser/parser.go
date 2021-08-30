@@ -44,12 +44,6 @@ type (
 	}
 	data struct {
 		height       uint64
-		blocks       []dmodels.Block
-		miniBlocks   []dmodels.MiniBlock
-		transactions []dmodels.Transaction
-		scResults    []dmodels.SCResult
-		accounts     []dmodels.Account
-		stakes       []dmodels.Stake
 		delegations  []dmodels.Delegation
 		rewards      []dmodels.Reward
 		stakeEvents  []dmodels.StakeEvent
@@ -167,42 +161,8 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 
 	for _, block := range hyperBlocks {
 		t := time.Unix(block.Timestamp, 0)
-		d.blocks = append(d.blocks, dmodels.Block{
-			AccumulatedFees: node.ValueToEGLD(decimal.NewFromInt(block.AccumulatedFees)),
-			DeveloperFees:   node.ValueToEGLD(decimal.NewFromInt(block.DeveloperFees)),
-			Hash:            block.Hash,
-			Nonce:           block.Nonce,
-			Round:           block.Round,
-			Shard:           block.Shard,
-			NumTxs:          block.NumTxs,
-			Epoch:           block.Epoch,
-			Status:          block.Status,
-			PrevBlockHash:   block.PrevBlockHash,
-			CreatedAt:       t,
-		})
 
 		for _, miniBlock := range block.Miniblocks {
-			receiverBlockHash := block.Hash
-			senderBlockHash := ""
-			if block.Shard == miniBlock.SourceShard {
-				receiverBlockHash = ""
-				senderBlockHash = block.Hash
-			}
-			if miniBlock.SourceShard == miniBlock.DestinationShard {
-				receiverBlockHash = block.Hash
-				senderBlockHash = block.Hash
-			}
-
-			d.miniBlocks = append(d.miniBlocks, dmodels.MiniBlock{
-				Hash:              miniBlock.Hash,
-				ReceiverBlockHash: receiverBlockHash,
-				ReceiverShard:     miniBlock.DestinationShard,
-				SenderBlockHash:   senderBlockHash,
-				SenderShard:       miniBlock.SourceShard,
-				Type:              miniBlock.Type,
-				CreatedAt:         t,
-			})
-
 			for _, mbTx := range miniBlock.Transactions {
 				tx, err := p.node.GetTransaction(mbTx.Hash)
 				if err != nil {
@@ -215,38 +175,6 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 				case dmodels.TxStatusSuccess, dmodels.TxStatusFail, dmodels.TxStatusInvalid:
 				default:
 					return d, fmt.Errorf("unknown tx status: %s", tx.Status)
-				}
-
-				amount, err := decimal.NewFromString(tx.Value)
-				if err != nil {
-					return d, fmt.Errorf("decimal.NewFromString: %s", err.Error())
-				}
-
-				d.transactions = append(d.transactions, dmodels.Transaction{
-					Hash:          mbTx.Hash,
-					Status:        tx.Status,
-					MiniBlockHash: tx.MiniblockHash,
-					Value:         node.ValueToEGLD(amount),
-					Sender:        tx.Sender,
-					SenderShard:   tx.SourceShard,
-					Receiver:      tx.Receiver,
-					ReceiverShard: tx.DestinationShard,
-					GasPrice:      tx.GasPrice,
-					Nonce:         tx.Nonce,
-					Data:          tx.Data,
-					CreatedAt:     t,
-				})
-
-				for _, r := range tx.SmartContractResults {
-					d.scResults = append(d.scResults, dmodels.SCResult{
-						Hash:    r.Hash,
-						TxHash:  mbTx.Hash,
-						From:    r.Sender,
-						To:      r.Receiver,
-						Value:   r.Value,
-						Data:    r.Data,
-						Message: r.ReturnMessage,
-					})
 				}
 
 				decodedBytes, err := base64.StdEncoding.DecodeString(tx.Data)
@@ -275,8 +203,6 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 					if err != nil {
 						return d, fmt.Errorf("parseRewardDelegations: %s", err.Error())
 					}
-				case "reStakeRewards": // create stake + claimRewards (check existence of reStakeRewards tx)
-					fmt.Println(txType, mbTx.Hash)
 				case "delegate":
 					err = d.parseDelegations(tx, mbTx.Hash, t)
 					if err != nil {
@@ -287,8 +213,6 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 					if err != nil {
 						return d, fmt.Errorf("parseRewardClaims: %s", err.Error())
 					}
-				case "unBond":
-					fmt.Println(txType, mbTx.Hash)
 				default:
 					if strings.Contains(txType, "unBond") {
 						err = d.parseUnbond(tx, mbTx.Hash, t)
@@ -449,12 +373,6 @@ func (d *data) parseStake(tx node.Tx, txHash string, t time.Time) error {
 	if err != nil {
 		return fmt.Errorf("decimal.NewFromString: %s", err.Error())
 	}
-	d.stakes = append(d.stakes, dmodels.Stake{
-		TxHash:    txHash,
-		Validator: tx.Receiver,
-		Amount:    node.ValueToEGLD(amount),
-		CreatedAt: t,
-	})
 	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
 		TxHash:    txHash,
 		Type:      dmodels.StakeStakeEventType,
@@ -503,12 +421,6 @@ func (d *data) parseUnstake(tx node.Tx, txType string, txHash string, t time.Tim
 	if err != nil {
 		return fmt.Errorf("decimalFromHex: %s", err.Error())
 	}
-	d.stakes = append(d.stakes, dmodels.Stake{
-		TxHash:    txHash,
-		Validator: tx.Receiver,
-		Amount:    a.Neg(),
-		CreatedAt: t,
-	})
 	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
 		TxHash:    txHash,
 		Type:      dmodels.UnStakeEventType,
@@ -563,7 +475,6 @@ func (p *Parser) saving() {
 		}
 		break
 	}
-	//p.setAccounts()
 
 	ticker := time.After(time.Second)
 
@@ -602,13 +513,7 @@ func (p *Parser) saving() {
 
 		var singleData data
 		for _, item := range dataset[:count] {
-			singleData.blocks = append(singleData.blocks, item.blocks...)
-			singleData.miniBlocks = append(singleData.miniBlocks, item.miniBlocks...)
-			singleData.transactions = append(singleData.transactions, item.transactions...)
-			singleData.scResults = append(singleData.scResults, item.scResults...)
-			singleData.accounts = append(singleData.accounts, item.accounts...)
 			singleData.delegations = append(singleData.delegations, item.delegations...)
-			singleData.stakes = append(singleData.stakes, item.stakes...)
 			singleData.rewards = append(singleData.rewards, item.rewards...)
 			singleData.stakeEvents = append(singleData.stakeEvents, item.stakeEvents...)
 		}
@@ -616,52 +521,12 @@ func (p *Parser) saving() {
 		p.wg.Add(1)
 		var err error
 		for {
-			err = p.dao.CreateBlocks(singleData.blocks)
-			if err == nil {
-				break
-			}
-			log.Error("Parser: dao.CreateBlocks: %s", err.Error())
-			<-time.After(repeatDelay)
-		}
-		for {
-			err = p.dao.CreateMiniBlocks(p.matchMiniblocks(singleData.miniBlocks))
-			if err == nil {
-				break
-			}
-			log.Error("Parser: dao.CreateMiniBlocks: %s", err.Error())
-			<-time.After(repeatDelay)
-		}
-		for {
-			err = p.dao.CreateTransactions(singleData.transactions)
-			if err == nil {
-				break
-			}
-			log.Error("Parser: dao.CreateTransactions: %s", err.Error())
-			<-time.After(repeatDelay)
-		}
-		for {
-			err = p.dao.CreateSCResults(singleData.scResults)
-			if err == nil {
-				break
-			}
-			log.Error("Parser: dao.CreateSCResults: %s", err.Error())
-			<-time.After(repeatDelay)
-		}
-		for {
 			err = p.dao.CreateDelegations(singleData.delegations)
 			if err == nil {
 				break
 			}
 			fmt.Println(singleData.delegations)
 			log.Error("Parser: dao.CreateDelegations: %s", err.Error())
-			<-time.After(repeatDelay)
-		}
-		for {
-			err = p.dao.CreateStakes(singleData.stakes)
-			if err == nil {
-				break
-			}
-			log.Error("Parser: dao.CreateStakes: %s", err.Error())
 			<-time.After(repeatDelay)
 		}
 		for {
@@ -681,7 +546,6 @@ func (p *Parser) saving() {
 			<-time.After(repeatDelay)
 		}
 
-		//p.saveNewAccounts(singleData)
 		for {
 			model.Height += uint64(count)
 			err = p.dao.UpdateParserHeight(model)
@@ -696,22 +560,6 @@ func (p *Parser) saving() {
 	}
 }
 
-//func (p *Parser) setAccounts() {
-//	var accounts []dmodels.Account
-//	var err error
-//	for {
-//		accounts, err = p.dao.GetAccounts(filters.Accounts{})
-//		if err != nil {
-//			log.Error("Parser: setAccounts: dao.GetAccounts: %s", err.Error())
-//			<-time.After(repeatDelay)
-//			continue
-//		}
-//		break
-//	}
-//	for _, account := range accounts {
-//		p.accounts[account.Address] = struct{}{}
-//	}
-//}
 
 func (p *Parser) matchMiniblocks(miniblocks []dmodels.MiniBlock) (result []dmodels.MiniBlock) {
 	mp := make(map[string]dmodels.MiniBlock)
@@ -733,39 +581,6 @@ func (p *Parser) matchMiniblocks(miniblocks []dmodels.MiniBlock) (result []dmode
 		result = append(result, b)
 	}
 	return result
-}
-
-func (p *Parser) saveNewAccounts(d data) {
-	var newAccounts []dmodels.Account
-	addAccount := func(acc string, tm time.Time) {
-		_, ok := p.accounts[acc]
-		if !ok {
-			p.accounts[acc] = struct{}{}
-			newAccounts = append(newAccounts, dmodels.Account{
-				Address:   acc,
-				CreatedAt: tm,
-			})
-		}
-	}
-
-	for _, tx := range d.transactions {
-		addAccount(tx.Sender, tx.CreatedAt)
-		addAccount(tx.Receiver, tx.CreatedAt)
-	}
-
-	for _, r := range d.scResults {
-		addAccount(r.From, d.blocks[0].CreatedAt)
-		addAccount(r.To, d.blocks[0].CreatedAt)
-	}
-
-	for {
-		err := p.dao.CreateAccounts(newAccounts)
-		if err == nil {
-			break
-		}
-		log.Error("Parser: dao.CreateAccounts: %s", err.Error())
-		<-time.After(repeatDelay)
-	}
 }
 
 func decimalFromHex(hexStr string) (result decimal.Decimal, err error) {

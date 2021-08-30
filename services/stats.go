@@ -63,17 +63,46 @@ func (s *ServiceFacade) updateStats() error {
 	if err != nil {
 		return fmt.Errorf("dao.GetTransactionsCount: %s", err.Error())
 	}
+	var providers []smodels.StakingProvider
+	err = s.getCache(dmodels.StakingProvidersStorageKey, &providers)
+	if err != nil {
+		return fmt.Errorf("getCache(%s): %s", dmodels.StakingProvidersStorageKey, err.Error())
+	}
+	avgFee := decimal.Zero
+	for _, p := range providers {
+		avgFee = avgFee.Add(p.ServiceFee)
+	}
+	if len(providers) > 0 {
+		avgFee = avgFee.Div(decimal.New(int64(len(providers)), 0))
+	}
+	txs, err := s.dao.GetTransactions(filters.Transactions{
+		Pagination: filters.Pagination{Limit: 100},
+	})
+	if err != nil {
+		return fmt.Errorf("dao.GetTransactions: %s", err.Error())
+	}
+	avgTxFee := decimal.Zero
+	for _, tx := range txs {
+		f, _ := decimal.NewFromString(tx.Fee)
+		avgTxFee = avgTxFee.Add(f)
+	}
+	if len(txs) > 0 {
+		avgTxFee = avgFee.Div(decimal.New(int64(len(txs)), 0))
+	}
 	err = s.setCache(dmodels.StatsStorageKey, smodels.Stats{
-		Price:             marketData.Price,
-		PriceChange:       marketData.PriceChange,
-		TradingVolume:     marketData.TradingVolume24h,
-		Cap:               marketData.Cap,
-		CapChange:         marketData.CapChange,
-		CirculatingSupply: marketData.CirculatingSupply,
-		TotalSupply:       marketData.TotalSupply,
-		Height:            status.ErdNonce,
-		TotalTxs:          txsTotal,
-		TotalAccounts:     accountsTotal,
+		Price:                  marketData.Price,
+		PriceChange:            marketData.PriceChange,
+		TradingVolume:          marketData.TradingVolume24h,
+		Cap:                    marketData.Cap,
+		CapChange:              marketData.CapChange,
+		CirculatingSupply:      marketData.CirculatingSupply,
+		TotalSupply:            marketData.TotalSupply,
+		Height:                 status.ErdNonce,
+		TotalTxs:               txsTotal,
+		TotalAccounts:          accountsTotal,
+		StakingProviders:       uint64(len(providers)),
+		AVGStakingProvidersFee: avgFee,
+		AVGTxFee:               avgTxFee,
 	})
 	if err != nil {
 		return fmt.Errorf("setCache: %s", err.Error())

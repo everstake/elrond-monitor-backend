@@ -129,6 +129,7 @@ func (api *API) loadRoutes() {
 		{Path: "/validators", Method: http.MethodGet, Func: api.GetValidators},
 		{Path: "/validator/{identity}", Method: http.MethodGet, Func: api.GetValidator},
 		{Path: "/stats/validators", Method: http.MethodGet, Func: api.GetValidatorStats},
+		{Path: "/providers/ranking", Method: http.MethodGet, Func: api.GetRanking},
 	})
 
 }

@@ -109,3 +109,13 @@ func (api *API) GetValidators(w http.ResponseWriter, r *http.Request) {
 	}
 	jsonData(w, validators)
 }
+
+func (api *API) GetRanking(w http.ResponseWriter, r *http.Request) {
+	ranking, err := api.svc.GetRanking()
+	if err != nil {
+		log.Error("API GetRanking: svc.GetRanking: %s", err.Error())
+		jsonError(err, w)
+		return
+	}
+	jsonData(w, ranking)
+}
