@@ -61,9 +61,9 @@ func (s *ServiceFacade) makeRanking() error {
 		addressesMap[d.address] = true
 	}
 	var providers []smodels.StakingProvider
-	err = s.setCache(dmodels.StakingProvidersStorageKey, providers)
+	err = s.getCache(dmodels.StakingProvidersStorageKey, &providers)
 	if err != nil {
-		return fmt.Errorf("setCache: %s", err.Error())
+		return fmt.Errorf("getCache: %s", err.Error())
 	}
 	if len(providers) > 100 {
 		providers = providers[:100]
