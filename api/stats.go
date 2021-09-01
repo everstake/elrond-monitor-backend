@@ -28,7 +28,7 @@ func (api *API) GetDailyStats(key string) func(w http.ResponseWriter, r *http.Re
 			return
 		}
 		if filter.From.IsZero() {
-			filter.From = smodels.NewTime(time.Now().Add(-time.Hour * 30))
+			filter.From = smodels.NewTime(time.Now().Add(-time.Hour * 24 * 7))
 		}
 		filter.Key = key
 		resp, err := api.svc.GetDailyStats(filter)
