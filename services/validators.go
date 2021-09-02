@@ -88,6 +88,7 @@ func (s *ServiceFacade) updateValidators() error {
 		var stake, topUp decimal.Decimal
 		var score float64
 		var count uint64
+		var totalUptime float64
 		providersMap := make(map[string]interface{})
 		for _, n := range ns {
 			stake = stake.Add(n.Stake)
@@ -95,6 +96,7 @@ func (s *ServiceFacade) updateValidators() error {
 			score += n.RatingModifier
 			if n.Type == smodels.NodeTypeValidator && n.Status != "inactive" {
 				count++
+				totalUptime += n.UpTime
 			}
 			if n.Provider != "" {
 				providersMap[n.Provider] = nil
@@ -113,6 +115,10 @@ func (s *ServiceFacade) updateValidators() error {
 				log.Warn("updateValidators: getIdentityProfile(%s): %s", key, err.Error())
 			}
 		}
+		var avgUptime float64
+		if count > 0 {
+			avgUptime = totalUptime / float64(count)
+		}
 		identities = append(identities, smodels.Identity{
 			Avatar:       kb.Them.Pictures.Primary.URL,
 			Description:  kb.Them.Profile.Bio,
@@ -125,6 +131,7 @@ func (s *ServiceFacade) updateValidators() error {
 			TopUp:        topUp,
 			Validators:   count,
 			Providers:    providers,
+			AVGUptime:    avgUptime,
 		})
 	}
 	sort.Slice(identities, func(i, j int) bool {
