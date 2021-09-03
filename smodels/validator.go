@@ -32,6 +32,7 @@ type StakingProvider struct {
 	TopUp            decimal.Decimal          `json:"top_up"`
 	Locked           decimal.Decimal          `json:"locked"`
 	Featured         bool                     `json:"featured"`
+	AVGUptime        float64                  `json:"avg_uptime"`
 	Validator        StakingProviderValidator `json:"validator"`
 }
 

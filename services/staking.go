@@ -148,11 +148,17 @@ func (s *ServiceFacade) updateStakingProviders() error {
 			Name:             meta.Name,
 			Validator:        v,
 		}
+
+		var totalUptime float64
 		for _, n := range nodesProviders[address] {
 			p.NumNodes++
 			p.Stake = p.Stake.Add(n.Stake)
 			p.TopUp = p.TopUp.Add(n.TopUp)
 			p.Locked = p.Locked.Add(n.Locked)
+			totalUptime += n.UpTime
+		}
+		if p.NumNodes > 0 {
+			p.AVGUptime = totalUptime / float64(p.NumNodes)
 		}
 		if p.NumNodes == 0 || p.Stake.Equal(decimal.Zero) {
 			continue
