@@ -264,7 +264,7 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 				case "withdraw":
 					err = d.parseWithdraw(tx, mbTx.Hash, t)
 					if err != nil {
-						return d, fmt.Errorf("parseWithdraw: %s", err.Error())
+						return d, fmt.Errorf("[tx_hash: %s] parseWithdraw: %s", mbTx.Hash, err.Error())
 					}
 				case "stake":
 					err = d.parseStake(tx, mbTx.Hash, t)
@@ -274,19 +274,19 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 				case "reDelegateRewards": // create delegation + claimRewards
 					err = d.parseRewardDelegations(tx, mbTx.Hash, nonce, t)
 					if err != nil {
-						return d, fmt.Errorf("parseRewardDelegations: %s", err.Error())
+						return d, fmt.Errorf("[tx_hash: %s] parseRewardDelegations: %s", mbTx.Hash, err.Error())
 					}
 				case "reStakeRewards": // create stake + claimRewards (check existence of reStakeRewards tx)
 					fmt.Println(txType, mbTx.Hash)
 				case "delegate":
 					err = d.parseDelegations(tx, mbTx.Hash, t)
 					if err != nil {
-						return d, fmt.Errorf("parseDelegations: %s", err.Error())
+						return d, fmt.Errorf("[tx_hash: %s] parseDelegations: %s", mbTx.Hash, err.Error())
 					}
 				case "claimRewards":
 					err = d.parseRewardClaims(tx, mbTx.Hash, nonce, t)
 					if err != nil {
-						return d, fmt.Errorf("parseRewardClaims: %s", err.Error())
+						return d, fmt.Errorf("[tx_hash: %s] parseRewardClaims: %s", mbTx.Hash, err.Error())
 					}
 				case "unBond":
 					fmt.Println(txType, mbTx.Hash)
@@ -294,19 +294,19 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 					if strings.Contains(txType, "unBond") {
 						err = d.parseUnbond(tx, mbTx.Hash, t)
 						if err != nil {
-							return d, fmt.Errorf("parseUnbond: %s", err.Error())
+							return d, fmt.Errorf("[tx_hash: %s] parseUnbond: %s", mbTx.Hash, err.Error())
 						}
 					}
 					if strings.Contains(txType, "unDelegate") {
 						err = d.parseUndelegations(tx, mbTx.Hash, txType, t)
 						if err != nil {
-							return d, fmt.Errorf("parseUndelegations: %s", err.Error())
+							return d, fmt.Errorf("[tx_hash: %s] parseUndelegations: %s", mbTx.Hash, err.Error())
 						}
 					}
 					if strings.Contains(txType, "unStake") {
 						err = d.parseUnstake(tx, mbTx.Hash, txType, t)
 						if err != nil {
-							return d, fmt.Errorf("parseUnstake: %s", err.Error())
+							return d, fmt.Errorf("[tx_hash: %s] parseUnstake: %s", mbTx.Hash, err.Error())
 						}
 					}
 				}
