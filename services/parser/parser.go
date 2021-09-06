@@ -43,10 +43,10 @@ type (
 		delegations map[string]map[string]decimal.Decimal
 	}
 	data struct {
-		height       uint64
-		delegations  []dmodels.Delegation
-		rewards      []dmodels.Reward
-		stakeEvents  []dmodels.StakeEvent
+		height      uint64
+		delegations []dmodels.Delegation
+		rewards     []dmodels.Reward
+		stakeEvents []dmodels.StakeEvent
 	}
 	ShardIndex uint64
 )
@@ -243,7 +243,7 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 
 func (d *data) parseDelegations(tx node.Tx, txHash string, t time.Time) error {
 	if !checkSCResults(tx.SmartContractResults, 2) {
-		fmt.Printf("parseDelegations: checkSCResults: false (tx: %s) \n", txHash)
+		log.Warn("Parser: parseDelegations: checkSCResults: false (tx: %s)", txHash)
 		return nil
 	}
 	amount, err := decimal.NewFromString(tx.Value)
@@ -302,7 +302,7 @@ func (d *data) parseRewardClaims(tx node.Tx, txHash string, nonce uint64, t time
 
 func (d *data) parseRewardDelegations(tx node.Tx, txHash string, nonce uint64, t time.Time) error {
 	if !checkSCResults(tx.SmartContractResults, 2) {
-		fmt.Printf("parseRewardDelegations: checkSCResults: false (tx: %s) \n", txHash)
+		log.Warn("Parser: parseRewardDelegations: checkSCResults: false (tx: %s)", txHash)
 		return nil
 	}
 	amount := tx.SmartContractResults[0].Value
@@ -337,7 +337,7 @@ func (d *data) parseRewardDelegations(tx node.Tx, txHash string, nonce uint64, t
 
 func (d *data) parseUndelegations(tx node.Tx, txHash string, txType string, t time.Time) error {
 	if !checkSCResults(tx.SmartContractResults, 2) {
-		fmt.Printf("parseUndelegations: checkSCResults: false (tx: %s) \n", txHash)
+		log.Warn("Parser: parseUndelegations: checkSCResults: false (tx: %s)", txHash)
 		return nil
 	}
 	amountData := strings.TrimPrefix(txType, "unDelegate@")
@@ -366,7 +366,7 @@ func (d *data) parseUndelegations(tx node.Tx, txHash string, txType string, t ti
 
 func (d *data) parseStake(tx node.Tx, txHash string, t time.Time) error {
 	if !checkSCResults(tx.SmartContractResults, 1) {
-		fmt.Printf("parseStake: checkSCResults: false (tx: %s) \n", txHash)
+		log.Warn("Parser: parseStake: checkSCResults: false (tx: %s)", txHash)
 		return nil
 	}
 	amount, err := decimal.NewFromString(tx.Value)
@@ -413,7 +413,7 @@ func (d *data) parseWithdraw(tx node.Tx, txHash string, t time.Time) error {
 
 func (d *data) parseUnstake(tx node.Tx, txType string, txHash string, t time.Time) error {
 	if !checkSCResults(tx.SmartContractResults, 1) {
-		fmt.Printf("parseUnstake: checkSCResults: false (tx: %s) \n", txHash)
+		log.Warn("Parser: parseUnstake: checkSCResults: false (tx: %s)", txHash)
 		return nil
 	}
 	amountData := strings.TrimPrefix(txType, "unStake@")
@@ -435,7 +435,8 @@ func (d *data) parseUnstake(tx node.Tx, txType string, txHash string, t time.Tim
 
 func (d *data) parseUnbond(tx node.Tx, txHash string, t time.Time) error {
 	if len(tx.SmartContractResults) != 2 {
-		return fmt.Errorf("len SmartContractResults != 2")
+		log.Warn("Parser [tx_has: %s]: parseUnbond: len SmartContractResults != 2", txHash)
+		return nil
 	}
 	okIndex := 1
 	amountIndex := 0
@@ -560,7 +561,6 @@ func (p *Parser) saving() {
 	}
 }
 
-
 func (p *Parser) matchMiniblocks(miniblocks []dmodels.MiniBlock) (result []dmodels.MiniBlock) {
 	mp := make(map[string]dmodels.MiniBlock)
 	for _, mb := range miniblocks {
@@ -586,8 +586,6 @@ func (p *Parser) matchMiniblocks(miniblocks []dmodels.MiniBlock) (result []dmode
 func decimalFromHex(hexStr string) (result decimal.Decimal, err error) {
 	d, err := hex.DecodeString(hexStr)
 	if err != nil {
-		fmt.Println(hexStr)
-
 		return result, fmt.Errorf("hex.DecodeString: %s", err.Error())
 	}
 	a := (&big.Int{}).SetBytes(d)
