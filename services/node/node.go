@@ -296,6 +296,29 @@ func (api *API) GetCumulatedRewards(provider string) (amount decimal.Decimal, er
 	return amount, nil
 }
 
+func (api *API) GetUserActiveStake(account, provider string) (amount decimal.Decimal, err error) {
+	hexAddress, err := addressToHex(account)
+	if err != nil {
+		return amount, fmt.Errorf("addressToHex: %s", err.Error())
+	}
+	rows, err := api.contractCall(ContractReq{
+		SCAddress: provider,
+		FuncName:  "getUserActiveStake",
+		Args:      []string{hexAddress},
+	})
+	if err != nil {
+		return amount, fmt.Errorf("contractCall: %s", err.Error())
+	}
+	if len(rows) != 1 {
+		return amount, fmt.Errorf("len(rows) != 1")
+	}
+	amount, err = ContractValueToDecimal(rows[0])
+	if err != nil {
+		return amount, fmt.Errorf("ContractValueToDecimal: %s", err.Error())
+	}
+	return amount, nil
+}
+
 func (api *API) GetQueue() (items []QueueItem, err error) {
 	rows, err := api.contractCall(ContractReq{
 		SCAddress: api.contracts.Staking,

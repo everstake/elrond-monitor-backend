@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/everstake/elrond-monitor-backend/dao/dmodels"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/log"
 	"github.com/everstake/elrond-monitor-backend/services/node"
@@ -11,10 +12,6 @@ import (
 	"net/http"
 	"sort"
 	"time"
-)
-
-const (
-	stakingProvidersMapStorageKey = "staking_providers"
 )
 
 func (s *ServiceFacade) GetStakeEvents(filter filters.StakeEvents) (page smodels.Pagination, err error) {
@@ -45,7 +42,7 @@ func (s *ServiceFacade) GetStakeEvents(filter filters.StakeEvents) (page smodels
 }
 
 func (s *ServiceFacade) GetStakingProviders() (providers []smodels.StakingProvider, err error) {
-	err = s.getCache(stakingProvidersMapStorageKey, &providers)
+	err = s.getCache(dmodels.StakingProvidersStorageKey, &providers)
 	if err != nil {
 		return nil, fmt.Errorf("getCache: %s", err.Error())
 	}
@@ -54,7 +51,7 @@ func (s *ServiceFacade) GetStakingProviders() (providers []smodels.StakingProvid
 
 func (s *ServiceFacade) GetStakingProvider(address string) (provider smodels.StakingProvider, err error) {
 	var providers []smodels.StakingProvider
-	err = s.getCache(stakingProvidersMapStorageKey, &providers)
+	err = s.getCache(dmodels.StakingProvidersStorageKey, &providers)
 	if err != nil {
 		return provider, fmt.Errorf("getCache: %s", err.Error())
 	}
@@ -92,7 +89,7 @@ func (s *ServiceFacade) updateStakingProviders() error {
 		sourceProvidersMap[provider.Contract] = provider
 	}
 	var nodes []smodels.Node
-	err = s.getCache(nodesStorageKey, &nodes)
+	err = s.getCache(dmodels.NodesStorageKey, &nodes)
 	if err != nil {
 		return fmt.Errorf("getCache(nodes): %s", err.Error())
 	}
@@ -103,7 +100,7 @@ func (s *ServiceFacade) updateStakingProviders() error {
 		}
 	}
 	var identities []smodels.Identity
-	err = s.getCache(validatorsStorageKey, &identities)
+	err = s.getCache(dmodels.ValidatorsStorageKey, &identities)
 	if err != nil {
 		return fmt.Errorf("getCache(identities): %s", err.Error())
 	}
@@ -151,11 +148,17 @@ func (s *ServiceFacade) updateStakingProviders() error {
 			Name:             meta.Name,
 			Validator:        v,
 		}
+
+		var totalUptime float64
 		for _, n := range nodesProviders[address] {
 			p.NumNodes++
 			p.Stake = p.Stake.Add(n.Stake)
 			p.TopUp = p.TopUp.Add(n.TopUp)
 			p.Locked = p.Locked.Add(n.Locked)
+			totalUptime += n.UpTime
+		}
+		if p.NumNodes > 0 {
+			p.AVGUptime = totalUptime / float64(p.NumNodes)
 		}
 		if p.NumNodes == 0 || p.Stake.Equal(decimal.Zero) {
 			continue
@@ -165,7 +168,7 @@ func (s *ServiceFacade) updateStakingProviders() error {
 	sort.Slice(providers, func(i, j int) bool {
 		return providers[i].Locked.GreaterThan(providers[j].Locked)
 	})
-	err = s.setCache(stakingProvidersMapStorageKey, providers)
+	err = s.setCache(dmodels.StakingProvidersStorageKey, providers)
 	if err != nil {
 		return fmt.Errorf("setCache: %s", err.Error())
 	}

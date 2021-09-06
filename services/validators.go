@@ -4,25 +4,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/everstake/elrond-monitor-backend/dao/dmodels"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/log"
-	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/everstake/elrond-monitor-backend/smodels"
 	"github.com/shopspring/decimal"
 	"net/http"
 	"sort"
-	"strings"
 	"time"
-)
-
-const (
-	nodesStorageKey      = "nodes"
-	validatorsStorageKey = "validators"
 )
 
 func (s *ServiceFacade) GetValidators(filter filters.Validators) (pagination smodels.Pagination, err error) {
 	var validators []smodels.Identity
-	err = s.getCache(validatorsStorageKey, &validators)
+	err = s.getCache(dmodels.ValidatorsStorageKey, &validators)
 	if err != nil {
 		return pagination, fmt.Errorf("getCache: %s", err.Error())
 	}
@@ -41,7 +35,7 @@ func (s *ServiceFacade) GetValidators(filter filters.Validators) (pagination smo
 
 func (s *ServiceFacade) GetValidator(identity string) (validator smodels.Identity, err error) {
 	var validators []smodels.Identity
-	err = s.getCache(validatorsStorageKey, &validators)
+	err = s.getCache(dmodels.ValidatorsStorageKey, &validators)
 	if err != nil {
 		return validator, fmt.Errorf("getCache: %s", err.Error())
 	}
@@ -67,7 +61,7 @@ func (s *ServiceFacade) UpdateValidators() {
 
 func (s *ServiceFacade) updateValidators() error {
 	var nodes []smodels.Node
-	err := s.getCache(nodesStorageKey, &nodes)
+	err := s.getCache(dmodels.NodesStorageKey, &nodes)
 	if err != nil {
 		return fmt.Errorf("getCache(nodes): %s", err.Error())
 	}
@@ -94,6 +88,7 @@ func (s *ServiceFacade) updateValidators() error {
 		var stake, topUp decimal.Decimal
 		var score float64
 		var count uint64
+		var totalUptime float64
 		providersMap := make(map[string]interface{})
 		for _, n := range ns {
 			stake = stake.Add(n.Stake)
@@ -101,6 +96,7 @@ func (s *ServiceFacade) updateValidators() error {
 			score += n.RatingModifier
 			if n.Type == smodels.NodeTypeValidator && n.Status != "inactive" {
 				count++
+				totalUptime += n.UpTime
 			}
 			if n.Provider != "" {
 				providersMap[n.Provider] = nil
@@ -119,6 +115,10 @@ func (s *ServiceFacade) updateValidators() error {
 				log.Warn("updateValidators: getIdentityProfile(%s): %s", key, err.Error())
 			}
 		}
+		var avgUptime float64
+		if count > 0 {
+			avgUptime = totalUptime / float64(count)
+		}
 		identities = append(identities, smodels.Identity{
 			Avatar:       kb.Them.Pictures.Primary.URL,
 			Description:  kb.Them.Profile.Bio,
@@ -131,6 +131,7 @@ func (s *ServiceFacade) updateValidators() error {
 			TopUp:        topUp,
 			Validators:   count,
 			Providers:    providers,
+			AVGUptime:    avgUptime,
 		})
 	}
 	sort.Slice(identities, func(i, j int) bool {
@@ -139,207 +140,11 @@ func (s *ServiceFacade) updateValidators() error {
 	for i := range identities {
 		identities[i].Rank = uint64(i + 1)
 	}
-	err = s.setCache(validatorsStorageKey, identities)
+	err = s.setCache(dmodels.ValidatorsStorageKey, identities)
 	if err != nil {
 		return fmt.Errorf("setCache: %s", err.Error())
 	}
 	return nil
-}
-
-func (s *ServiceFacade) UpdateNodes() {
-	err := s.updateNodes()
-	if err != nil {
-		log.Error("updateNodes: %s", err.Error())
-	}
-}
-
-func (s *ServiceFacade) updateNodes() error {
-	nodesStatus, err := s.node.GetHeartbeatStatus()
-	if err != nil {
-		return fmt.Errorf("node.GetHeartbeatStatus: %s", err.Error())
-	}
-	validatorStatistics, err := s.node.GetValidatorStatistics()
-	if err != nil {
-		return fmt.Errorf("node.GetValidatorStatistics: %s", err.Error())
-	}
-	nodesMap := make(map[string]smodels.Node)
-	for _, n := range nodesStatus {
-		shard := n.ComputedShardID
-		if n.PeerType == smodels.NodeTypeObserver {
-			shard = n.ReceivedShardID
-		}
-		nodesMap[n.PublicKey] = smodels.Node{
-			HeartbeatStatus:    n,
-			ValidatorStatistic: node.ValidatorStatistic{ShardID: shard},
-		}
-	}
-	for key, stat := range validatorStatistics {
-		n := nodesMap[key]
-		n.ValidatorStatistic = stat
-		nodesMap[key] = n
-	}
-
-	for key, n := range nodesMap {
-		status := n.ValidatorStatus
-		if status == "" {
-			status = n.PeerType
-		}
-		if status == smodels.NodeTypeObserver {
-			n.Type = smodels.NodeTypeObserver
-		} else {
-			n.Type = smodels.NodeTypeValidator
-			if strings.Contains(status, smodels.NodeStatusLeaving) {
-				status = smodels.NodeStatusLeaving
-			}
-		}
-		n.Status = status
-		if n.TotalUpTimeSec == 0 && n.TotalDownTimeSec == 0 {
-			n.UpTime = 0
-			n.DownTime = 0
-			if n.IsActive {
-				n.UpTime = 100
-				n.DownTime = 100
-			}
-		} else {
-			n.UpTime = float64(n.TotalUpTimeSec*100) / float64(n.TotalUpTimeSec+n.TotalDownTimeSec)
-			n.DownTime = 100 - n.UpTime
-		}
-		nodesMap[key] = n
-	}
-
-	// set from queue
-	queue, err := s.node.GetQueue()
-	if err != nil {
-		return fmt.Errorf("node.GetQueue: %s", err.Error())
-	}
-	for _, item := range queue {
-		n, ok := nodesMap[item.BLS]
-		if ok {
-			n.Type = smodels.NodeTypeValidator
-			n.Status = smodels.NodeStatusQueued
-			n.Position = item.Position
-		} else {
-			n = smodels.Node{
-				HeartbeatStatus: node.HeartbeatStatus{
-					PublicKey: item.BLS,
-				},
-				Position: item.Position,
-				Type:     smodels.NodeTypeValidator,
-				Status:   smodels.NodeStatusQueued,
-			}
-		}
-		nodesMap[item.BLS] = n
-	}
-
-	// set owners
-	for key, n := range nodesMap {
-		if n.Type != smodels.NodeTypeValidator {
-			continue
-		}
-		owner, err := s.node.GetOwner(key)
-		if err != nil {
-			return fmt.Errorf("node.GetOwner: %s", err.Error())
-		}
-		n.Owner = owner
-		nodesMap[key] = n
-	}
-
-	var providers []smodels.StakingProvider
-	err = s.getCache(stakingProvidersMapStorageKey, &providers)
-	if err != nil {
-		log.Warn("updateNodes: getCache(providers): %s", err.Error())
-	}
-	findProvider := func(owner string) (smodels.StakingProvider, bool) {
-		for _, p := range providers {
-			if p.Provider == owner {
-				return p, true
-			}
-		}
-		return smodels.StakingProvider{}, false
-	}
-	for key, n := range nodesMap {
-		if n.Type != smodels.NodeTypeValidator {
-			continue
-		}
-		p, found := findProvider(n.Owner)
-		if found {
-			n.Provider = p.Provider
-			if p.Identity != "" {
-				n.Identity = p.Identity
-			}
-			nodesMap[key] = n
-		}
-	}
-
-	// set stakes
-	for key, n := range nodesMap {
-		if n.Type != smodels.NodeTypeValidator {
-			continue
-		}
-		address := n.Provider
-		if address == "" {
-			address = n.Owner
-		}
-		stake, err := s.node.GetTotalStakedTopUpStakedBlsKeys(address)
-		if err != nil {
-			log.Warn("updateNodes: node.GetTotalStakedTopUpStakedBlsKeys: %s", err.Error())
-			continue
-		}
-		n.Stake = node.ValueToEGLD(stake.Stake)
-		n.TopUp = node.ValueToEGLD(stake.TopUp)
-		n.Locked = node.ValueToEGLD(stake.Locked)
-		nodesMap[key] = n
-	}
-
-	var nodes []smodels.Node
-	for key, n := range nodesMap {
-		n.PublicKey = key
-		nodes = append(nodes, n)
-	}
-
-	err = s.setCache(nodesStorageKey, nodes)
-	if err != nil {
-		return fmt.Errorf("setCache: %s", err.Error())
-	}
-	return nil
-}
-
-func (s *ServiceFacade) GetNodes(filter filters.Nodes) (pagination smodels.Pagination, err error) {
-	var nodes []smodels.Node
-	err = s.getCache(nodesStorageKey, &nodes)
-	if err != nil {
-		return pagination, fmt.Errorf("getCache: %s", err.Error())
-	}
-	nodesLen := uint64(len(nodes))
-	pagination.Count = nodesLen
-	if filter.Limit*(filter.Page-1) > nodesLen {
-		return pagination, nil
-	}
-	maxIndex := filter.Page * filter.Limit
-	if nodesLen-1 < maxIndex {
-		maxIndex = nodesLen - 1
-	}
-	pagination.Items = nodes[filter.Offset():maxIndex]
-	return pagination, nil
-}
-
-func (s *ServiceFacade) GetNode(key string) (node smodels.Node, err error) {
-	var nodes []smodels.Node
-	err = s.getCache(nodesStorageKey, &nodes)
-	if err != nil {
-		return node, fmt.Errorf("getCache: %s", err.Error())
-	}
-	for _, n := range nodes {
-		if n.PublicKey == key {
-			return n, nil
-		}
-	}
-	msg := fmt.Sprintf("node %s not found", key)
-	return node, smodels.Error{
-		Err:      msg,
-		Msg:      msg,
-		HttpCode: 404,
-	}
 }
 
 func (s *ServiceFacade) getIdentityProfile(identity string) (data smodels.IdentityKeybase, err error) {

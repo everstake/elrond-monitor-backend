@@ -14,6 +14,7 @@ type Identity struct {
 	StakePercent float64         `json:"stake_percent"`
 	TopUp        decimal.Decimal `json:"top_up"`
 	Validators   uint64          `json:"validators"`
+	AVGUptime    float64         `json:"avg_uptime"`
 	Providers    []string        `json:"providers"`
 }
 
@@ -31,6 +32,7 @@ type StakingProvider struct {
 	TopUp            decimal.Decimal          `json:"top_up"`
 	Locked           decimal.Decimal          `json:"locked"`
 	Featured         bool                     `json:"featured"`
+	AVGUptime        float64                  `json:"avg_uptime"`
 	Validator        StakingProviderValidator `json:"validator"`
 }
 

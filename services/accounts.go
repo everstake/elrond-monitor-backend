@@ -2,10 +2,12 @@ package services
 
 import (
 	"fmt"
+	"github.com/everstake/elrond-monitor-backend/dao/derrors"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/everstake/elrond-monitor-backend/smodels"
 	"github.com/shopspring/decimal"
+	"net/http"
 )
 
 func (s *ServiceFacade) GetAccounts(filter filters.Accounts) (items smodels.Pagination, err error) {
@@ -15,14 +17,22 @@ func (s *ServiceFacade) GetAccounts(filter filters.Accounts) (items smodels.Pagi
 	}
 	accounts := make([]smodels.Account, len(dAccounts))
 	for i, a := range dAccounts {
+		userStake, err := s.node.GetUserStake(a.Address)
+		if err != nil {
+			return items, fmt.Errorf("node.GetUserStake: %s", err.Error())
+		}
+		balance, _ := decimal.NewFromString(a.Balance)
 		accounts[i] = smodels.Account{
-			Address:   a.Address,
-			CreatedAt: smodels.NewTime(a.CreatedAt),
+			Address:     a.Address,
+			Balance:     node.ValueToEGLD(balance),
+			Nonce:       a.Nonce,
+			Delegated:   node.ValueToEGLD(userStake.ActiveStake),
+			Undelegated: node.ValueToEGLD(userStake.UnstakedStake),
 		}
 	}
-	total, err := s.dao.GetAccountsTotal(filter)
+	total, err := s.dao.GetAccountsCount(filter)
 	if err != nil {
-		return items, fmt.Errorf("dao.GetAccountsTotal: %s", err.Error())
+		return items, fmt.Errorf("dao.GetAccountsCount: %s", err.Error())
 	}
 	return smodels.Pagination{
 		Items: accounts,
@@ -31,11 +41,17 @@ func (s *ServiceFacade) GetAccounts(filter filters.Accounts) (items smodels.Pagi
 }
 
 func (s *ServiceFacade) GetAccount(address string) (account smodels.Account, err error) {
-	acc, err := s.node.GetAddress(address)
+	acc, err := s.dao.GetAccount(address)
 	if err != nil {
-		return account, fmt.Errorf("node.GetAddress: %s", err.Error())
+		if err == derrors.NotFound {
+			return account, smodels.Error{
+				Err:      err.Error(),
+				Msg:      "account not found",
+				HttpCode: http.StatusNotFound,
+			}
+		}
+		return account, fmt.Errorf("dao.GetAccount: %s", err.Error())
 	}
-	dAcc, _ := s.dao.GetAccount(address)
 	userStake, err := s.node.GetUserStake(address)
 	if err != nil {
 		return account, fmt.Errorf("node.GetUserStake: %s", err.Error())
@@ -52,15 +68,15 @@ func (s *ServiceFacade) GetAccount(address string) (account smodels.Account, err
 			Stake:    stake,
 		})
 	}
+	balance, _ := decimal.NewFromString(acc.Balance)
 	return smodels.Account{
 		Address:          address,
-		Balance:          node.ValueToEGLD(acc.Balance),
+		Balance:          node.ValueToEGLD(balance),
 		Nonce:            acc.Nonce,
 		Delegated:        node.ValueToEGLD(userStake.ActiveStake),
 		Undelegated:      node.ValueToEGLD(userStake.UnstakedStake),
 		RewardsClaimed:   decimal.Zero, // todo
 		ClaimableRewards: node.ValueToEGLD(claimableRewards),
 		StakingProviders: stakeProviders,
-		CreatedAt:        smodels.NewTime(dAcc.CreatedAt),
 	}, nil
 }

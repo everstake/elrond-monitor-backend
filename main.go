@@ -9,6 +9,7 @@ import (
 	"github.com/everstake/elrond-monitor-backend/services/modules"
 	"github.com/everstake/elrond-monitor-backend/services/parser"
 	"github.com/everstake/elrond-monitor-backend/services/scheduler"
+	"github.com/everstake/elrond-monitor-backend/services/watcher"
 	"log"
 	"os"
 	"os/signal"
@@ -50,13 +51,16 @@ func main() {
 	apiServer := api.NewAPI(cfg, s, d)
 
 	sch := scheduler.NewScheduler()
-	sch.AddProcessWithInterval(s.UpdateStats, time.Minute)
+	sch.AddProcessWithInterval(s.UpdateStats, time.Minute*3)
 	sch.AddProcessWithInterval(s.UpdateValidatorsMap, time.Minute*20)
 	sch.AddProcessWithInterval(s.UpdateStakingProviders, time.Hour)
 	sch.AddProcessWithInterval(s.UpdateNodes, time.Hour)
 	sch.AddProcessWithInterval(s.UpdateValidators, time.Hour)
+	sch.AddProcessWithInterval(s.MakeRanking, time.Hour)
 
-	g := modules.NewGroup(apiServer, prs, ds, sch)
+	w := watcher.NewWatcher(d, apiServer.WS)
+
+	g := modules.NewGroup(apiServer, prs, ds, sch, w)
 	g.Run()
 
 	gracefulStop := make(chan os.Signal)

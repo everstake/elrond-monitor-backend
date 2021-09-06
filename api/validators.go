@@ -71,7 +71,6 @@ func (api *API) GetNodes(w http.ResponseWriter, r *http.Request) {
 	jsonData(w, nodes)
 }
 
-
 func (api *API) GetValidator(w http.ResponseWriter, r *http.Request) {
 	identity, ok := mux.Vars(r)["identity"]
 	if !ok || identity == "" {
@@ -109,4 +108,14 @@ func (api *API) GetValidators(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonData(w, validators)
+}
+
+func (api *API) GetRanking(w http.ResponseWriter, r *http.Request) {
+	ranking, err := api.svc.GetRanking()
+	if err != nil {
+		log.Error("API GetRanking: svc.GetRanking: %s", err.Error())
+		jsonError(err, w)
+		return
+	}
+	jsonData(w, ranking)
 }

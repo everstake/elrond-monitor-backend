@@ -3,7 +3,9 @@ package api
 import (
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/log"
+	"github.com/everstake/elrond-monitor-backend/smodels"
 	"net/http"
+	"time"
 )
 
 func (api *API) GetStats(w http.ResponseWriter, r *http.Request) {
@@ -25,8 +27,8 @@ func (api *API) GetDailyStats(key string) func(w http.ResponseWriter, r *http.Re
 			jsonBadRequest(w, "bad params")
 			return
 		}
-		if filter.Limit == 0 {
-			filter.Limit = 30
+		if filter.From.IsZero() {
+			filter.From = smodels.NewTime(time.Now().Add(-time.Hour * 24 * 7))
 		}
 		filter.Key = key
 		resp, err := api.svc.GetDailyStats(filter)
@@ -48,4 +50,14 @@ func (api *API) GetValidatorsMap(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
+}
+
+func (api *API) GetValidatorStats(w http.ResponseWriter, r *http.Request) {
+	resp, err := api.svc.GetValidatorStats()
+	if err != nil {
+		log.Error("API GetValidatorStats: GetValidatorStats.GetStats: %s", err.Error())
+		jsonError(err, w)
+		return
+	}
+	jsonData(w, resp)
 }

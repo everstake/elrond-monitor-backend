@@ -36,10 +36,16 @@ func (db Postgres) CreateDailyStats(stats []dmodels.DailyStat) error {
 func (db Postgres) GetDailyStatsRange(filter filters.DailyStats) (items []dmodels.DailyStat, err error) {
 	q := squirrel.Select("*").
 		From(dmodels.DailyStatsTable).
-		OrderBy("das_created_at desc").
+		OrderBy("das_created_at").
 		Where(squirrel.Eq{"das_title": filter.Key})
 	if filter.Limit != 0 {
 		q = q.Limit(filter.Limit)
+	}
+	if !filter.From.IsZero() {
+		q = q.Where(squirrel.GtOrEq{"das_created_at": filter.From})
+	}
+	if !filter.To.IsZero() {
+		q = q.Where(squirrel.LtOrEq{"das_created_at": filter.To})
 	}
 	err = db.find(&items, q)
 	return items, err
