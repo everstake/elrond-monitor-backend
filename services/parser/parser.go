@@ -470,9 +470,8 @@ func (d *data) parseUnbond(tx node.Tx, txHash string, t time.Time) error {
 		return nil
 	}
 
-	okStr := base64.StdEncoding.EncodeToString([]byte(tx.SmartContractResults[okIndex].Data))
-	if !strings.Contains(okStr, "@ok") {
-		log.Warn("Parser [tx_hash: %s]: parseUnbond: bad OK", txHash)
+	if tx.SmartContractResults[okIndex].Data != msgOKBase64 && tx.SmartContractResults[okIndex].Data != msgOKHex {
+		log.Warn("Parser [tx_hash: %s]: parseUnbond: ok not found (%s)`", txHash, tx.SmartContractResults[okIndex].Data)
 		return nil
 	}
 
