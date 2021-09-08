@@ -444,12 +444,14 @@ func (d *data) parseUnbond(tx node.Tx, txHash string, t time.Time) error {
 		okIndex = 0
 		amountIndex = 1
 	} else if base64.StdEncoding.EncodeToString([]byte(tx.SmartContractResults[0].Data)) != "delegation stake unbond" {
-		return fmt.Errorf("worng format")
+		log.Warn("Parser [tx_has: %s]: parseUnbond: can`t find `delegation stake unbond`", txHash)
+		return nil
 	}
 
 	okStr := base64.StdEncoding.EncodeToString([]byte(tx.SmartContractResults[okIndex].Data))
 	if !strings.Contains(okStr, "@ok") {
-		return fmt.Errorf("wrong format")
+		log.Warn("Parser [tx_has: %s]: parseUnbond: bad OK", txHash)
+		return nil
 	}
 
 	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
