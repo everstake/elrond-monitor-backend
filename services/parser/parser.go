@@ -355,6 +355,10 @@ func (d *data) parseUndelegations(tx node.Tx, txHash string, txType string, t ti
 	if err != nil {
 		return fmt.Errorf("[tx: %s] decimalFromHex: %s", txHash, err.Error())
 	}
+	if tooMuchValue(a) {
+		log.Warn("Parser [tx_has: %s]: parseUndelegations: too much value", txHash)
+		return nil
+	}
 	d.delegations = append(d.delegations, dmodels.Delegation{
 		Delegator: tx.Sender,
 		TxHash:    txHash,
@@ -435,6 +439,10 @@ func (d *data) parseUnstake(tx node.Tx, txType string, txHash string, t time.Tim
 	if err != nil {
 		return fmt.Errorf("decimalFromHex: %s", err.Error())
 	}
+	if tooMuchValue(a) {
+		log.Warn("Parser [tx_has: %s]: parseUnstake: too much value", txHash)
+		return nil
+	}
 	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
 		TxHash:    txHash,
 		Type:      dmodels.UnStakeEventType,
@@ -480,7 +488,7 @@ func (d *data) parseUnbond(tx node.Tx, txHash string, t time.Time) error {
 		Validator: tx.Receiver,
 		Delegator: tx.Sender,
 		Epoch:     tx.Epoch,
-		Amount:    node.ValueToEGLD(tx.SmartContractResults[amountIndex].Value),
+		Amount:    value,
 		CreatedAt: t,
 	})
 	return nil
