@@ -102,7 +102,7 @@ func (s *ServiceFacade) updateStats() error {
 		TotalAccounts:          accountsTotal,
 		StakingProviders:       uint64(len(providers)),
 		AVGStakingProvidersFee: avgFee,
-		AVGTxFee:               avgTxFee,
+		AVGTxFee:               node.ValueToEGLD(avgTxFee),
 	})
 	if err != nil {
 		return fmt.Errorf("setCache: %s", err.Error())

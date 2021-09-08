@@ -281,11 +281,16 @@ func (d *data) parseRewardClaims(tx node.Tx, txHash string, nonce uint64, t time
 		fmt.Printf("parseRewardClaims can`t find OK msg (tx: %s) \n", txHash)
 		return nil
 	}
+	amount := node.ValueToEGLD(tx.SmartContractResults[rewardsIndex].Value)
+	if tooMuchValue(amount) {
+		log.Warn("Parser [tx_has: %s]: parseRewardClaims: too much value", txHash)
+		return nil
+	}
 	d.rewards = append(d.rewards, dmodels.Reward{
 		HypeblockID:     nonce,
 		TxHash:          txHash,
 		ReceiverAddress: tx.Sender,
-		Amount:          node.ValueToEGLD(tx.SmartContractResults[rewardsIndex].Value),
+		Amount:          amount,
 		CreatedAt:       t,
 	})
 	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
@@ -294,7 +299,7 @@ func (d *data) parseRewardClaims(tx node.Tx, txHash string, nonce uint64, t time
 		Validator: tx.Receiver,
 		Delegator: tx.Sender,
 		Epoch:     tx.Epoch,
-		Amount:    node.ValueToEGLD(tx.SmartContractResults[rewardsIndex].Value),
+		Amount:    amount,
 		CreatedAt: t,
 	})
 	return nil
@@ -309,18 +314,23 @@ func (d *data) parseRewardDelegations(tx node.Tx, txHash string, nonce uint64, t
 	if len(tx.SmartContractResults[1].Data) == 0 {
 		amount = tx.SmartContractResults[1].Value
 	}
+	amount = node.ValueToEGLD(amount)
+	if tooMuchValue(amount) {
+		log.Warn("Parser [tx_has: %s]: parseRewardDelegations: too much value", txHash)
+		return nil
+	}
 	d.rewards = append(d.rewards, dmodels.Reward{
 		HypeblockID:     nonce,
 		TxHash:          txHash,
 		ReceiverAddress: tx.Sender,
-		Amount:          node.ValueToEGLD(amount),
+		Amount:          amount,
 		CreatedAt:       t,
 	})
 	d.delegations = append(d.delegations, dmodels.Delegation{
 		Delegator: tx.Sender,
 		TxHash:    txHash,
 		Validator: tx.Receiver,
-		Amount:    node.ValueToEGLD(amount),
+		Amount:    amount,
 		CreatedAt: t,
 	})
 	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
@@ -329,7 +339,7 @@ func (d *data) parseRewardDelegations(tx node.Tx, txHash string, nonce uint64, t
 		Validator: tx.Receiver,
 		Delegator: tx.Sender,
 		Epoch:     tx.Epoch,
-		Amount:    node.ValueToEGLD(amount),
+		Amount:    amount,
 		CreatedAt: t,
 	})
 	return nil
@@ -399,6 +409,10 @@ func (d *data) parseWithdraw(tx node.Tx, txHash string, t time.Time) error {
 	if !findOK {
 		return nil
 	}
+	if tooMuchValue(amount) {
+		log.Warn("Parser [tx_has: %s]: parseWithdraw: too much value", txHash)
+		return nil
+	}
 	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
 		TxHash:    txHash,
 		Type:      dmodels.WithdrawEventType,
@@ -451,6 +465,12 @@ func (d *data) parseUnbond(tx node.Tx, txHash string, t time.Time) error {
 	okStr := base64.StdEncoding.EncodeToString([]byte(tx.SmartContractResults[okIndex].Data))
 	if !strings.Contains(okStr, "@ok") {
 		log.Warn("Parser [tx_has: %s]: parseUnbond: bad OK", txHash)
+		return nil
+	}
+
+	value := node.ValueToEGLD(tx.SmartContractResults[amountIndex].Value)
+	if tooMuchValue(value) {
+		log.Warn("Parser [tx_has: %s]: parseUnbond: too much value", txHash)
 		return nil
 	}
 
@@ -609,4 +629,8 @@ func checkSCResults(results []node.SmartContractResult, expectedLen int) bool {
 		return results[okIndex].Data == msgOKBase64 || results[okIndex].Data == msgOKHex
 	}
 	return false
+}
+
+func tooMuchValue(d decimal.Decimal) bool {
+	return d.GreaterThanOrEqual(decimal.New(1, 18))
 }
