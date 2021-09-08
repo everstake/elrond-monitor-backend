@@ -462,10 +462,10 @@ func (d *data) parseUnbond(tx node.Tx, txHash string, t time.Time) error {
 	}
 	okIndex := 1
 	amountIndex := 0
-	if base64.StdEncoding.EncodeToString([]byte(tx.SmartContractResults[1].Data)) == "delegation stake unbond" {
+	if tx.SmartContractResults[1].Data == "delegation stake unbond" {
 		okIndex = 0
 		amountIndex = 1
-	} else if base64.StdEncoding.EncodeToString([]byte(tx.SmartContractResults[0].Data)) != "delegation stake unbond" {
+	} else if tx.SmartContractResults[0].Data != "delegation stake unbond" {
 		log.Warn("Parser [tx_hash: %s]: parseUnbond: can`t find `delegation stake unbond`", txHash)
 		return nil
 	}
