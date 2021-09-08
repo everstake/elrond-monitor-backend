@@ -286,6 +286,11 @@ func (d *data) parseRewardClaims(tx node.Tx, txHash string, nonce uint64, t time
 		log.Warn("Parser [tx_has: %s]: parseRewardClaims: too much value", txHash)
 		return nil
 	}
+	amount := node.ValueToEGLD(tx.SmartContractResults[rewardsIndex].Value)
+	if tooMuchValue(amount) {
+		log.Warn("Parser [tx_has: %s]: parseRewardClaims: too much value", txHash)
+		return nil
+	}
 	d.rewards = append(d.rewards, dmodels.Reward{
 		HypeblockID:     nonce,
 		TxHash:          txHash,
