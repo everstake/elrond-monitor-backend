@@ -353,7 +353,8 @@ func (d *data) parseUndelegations(tx node.Tx, txHash string, txType string, t ti
 	amountData := strings.TrimPrefix(txType, "unDelegate@")
 	a, err := decimalFromHex(amountData)
 	if err != nil {
-		return fmt.Errorf("[tx: %s] decimalFromHex: %s", txHash, err.Error())
+		log.Warn("Parser [tx_hash: %s]: decimalFromHex: %s", txHash, err.Error())
+		return nil
 	}
 	if tooMuchValue(a) {
 		log.Warn("Parser [tx_hash: %s]: parseUndelegations: too much value", txHash)
@@ -437,7 +438,8 @@ func (d *data) parseUnstake(tx node.Tx, txType string, txHash string, t time.Tim
 	amountData := strings.TrimPrefix(txType, "unStake@")
 	a, err := decimalFromHex(amountData)
 	if err != nil {
-		return fmt.Errorf("decimalFromHex: %s", err.Error())
+		log.Warn("Parser [tx_hash: %s]: decimalFromHex: %S", txHash, err.Error())
+		return nil
 	}
 	if tooMuchValue(a) {
 		log.Warn("Parser [tx_hash: %s]: parseUnstake: too much value", txHash)
