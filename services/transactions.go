@@ -87,6 +87,7 @@ func (s *ServiceFacade) GetTransaction(hash string) (tx smodels.Tx, err error) {
 		ShardTo:       uint64(dTx.ReceiverShard),
 		ScResults:     results,
 		Signature:     dTx.Signature,
+		Data:          string(dTx.Data),
 		Timestamp:     smodels.NewTime(time.Unix(int64(dTx.Timestamp), 0)),
 	}, nil
 }

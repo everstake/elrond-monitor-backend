@@ -259,6 +259,8 @@ paths:
                     type: number
                   type:
                     type: string
+                  data:
+                    type: string
                   scResults:
                     type: array
                     items:
@@ -285,6 +287,7 @@ paths:
                     gas_price: 1000000200,
                     miniblock_hash: "e51e2a60d7bb16ee587fe87a871f3de4840fe8bf152d3dc0d04deb94aff97692",
                     timestamp: 1623945181,
+                    data: "input data",
                     scResults: {
                       from: "erd1qqqqqqqqqqqqqqqpqqqqqqqqqqqqqqqqqqqqqqqqqqqqq28llllsu54ydr",
                       to: "erd1kwl4vr0w46dvpq85ajcz9rqxjnyf93wqnmwhqztcu0pjnsmfvx9qxdavhh",
@@ -669,6 +672,17 @@ paths:
           required: false
           schema:
             type: string
+        - in: query
+          name: sort_by
+          required: false
+          schema:
+            type: string
+            enum: [online, shard]
+        - in: query
+          name: desc
+          required: false
+          schema:
+            type: boolean
       tags:
         - "Staking"
       summary: get nodes

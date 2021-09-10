@@ -7,6 +7,7 @@ import (
 	"github.com/everstake/elrond-monitor-backend/log"
 	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/everstake/elrond-monitor-backend/smodels"
+	"sort"
 	"strings"
 )
 
@@ -194,7 +195,20 @@ func (s *ServiceFacade) GetNodes(filter filters.Nodes) (pagination smodels.Pagin
 	if nodesLen-1 < maxIndex {
 		maxIndex = nodesLen - 1
 	}
-	pagination.Items = filteredNodes[filter.Offset():maxIndex]
+	items := filteredNodes[filter.Offset():maxIndex]
+	if filter.SortBy != "" {
+		switch filter.SortBy {
+		case filters.NodesSortByOnline:
+			sort.Slice(items, func(i, j int) bool {
+				return items[i].IsActive && !items[j].IsActive
+			})
+		case filters.NodesSortByShard:
+			sort.Slice(items, func(i, j int) bool {
+				return items[i].ShardID > items[j].ShardID
+			})
+		}
+	}
+	pagination.Items = items
 	return pagination, nil
 }
 

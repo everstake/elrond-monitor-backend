@@ -77,10 +77,16 @@ func (s *ServiceFacade) makeRanking() error {
 		if name == "" {
 			name = provider.Provider
 		}
+		filteredDelegationsMap := make(map[string]decimal.Decimal)
+		for d, amount := range delegationsMap[provider.Provider] {
+			if addressesMap[d] {
+				filteredDelegationsMap[d] = amount
+			}
+		}
 		ranking = append(ranking, smodels.Ranking{
 			Provider:   name,
 			Amount:     provider.Locked,
-			Delegators: delegationsMap[provider.Provider],
+			Delegators: filteredDelegationsMap,
 		})
 	}
 	err = s.setCache(dmodels.RankingStorageKey, ranking)

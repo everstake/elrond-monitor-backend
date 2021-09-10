@@ -16,5 +16,6 @@ type Tx struct {
 	ShardTo       uint64          `json:"shard_to"`
 	ScResults     []ScResult      `json:"scResults"`
 	Signature     string          `json:"signature"`
+	Data          string          `json:"data"`
 	Timestamp     Time            `json:"timestamp"`
 }
