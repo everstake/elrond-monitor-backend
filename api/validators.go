@@ -23,7 +23,21 @@ func (api *API) GetStakingProvider(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *API) GetStakingProviders(w http.ResponseWriter, r *http.Request) {
-	providers, err := api.svc.GetStakingProviders()
+	var filter filters.StakingProviders
+	err := api.queryDecoder.Decode(&filter, r.URL.Query())
+	if err != nil {
+		log.Debug("API GetStakingProviders: Decode: %s", err.Error())
+		jsonBadRequest(w, "bad params")
+		return
+	}
+	filter.SetMaxLimit(5000)
+	err = filter.Validate()
+	if err != nil {
+		log.Debug("API GetStakingProviders: filter.Validate: %s", err.Error())
+		jsonBadRequest(w, err.Error())
+		return
+	}
+	providers, err := api.svc.GetStakingProviders(filter)
 	if err != nil {
 		log.Error("API GetStakingProviders: svc.GetStakingProviders: %s", err.Error())
 		jsonError(err, w)

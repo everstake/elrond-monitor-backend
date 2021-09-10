@@ -41,12 +41,23 @@ func (s *ServiceFacade) GetStakeEvents(filter filters.StakeEvents) (page smodels
 	}, nil
 }
 
-func (s *ServiceFacade) GetStakingProviders() (providers []smodels.StakingProvider, err error) {
+func (s *ServiceFacade) GetStakingProviders(filter filters.StakingProviders) (pagination smodels.Pagination, err error) {
+	var providers []smodels.StakingProvider
 	err = s.getCache(dmodels.StakingProvidersStorageKey, &providers)
 	if err != nil {
-		return nil, fmt.Errorf("getCache: %s", err.Error())
+		return pagination, fmt.Errorf("getCache: %s", err.Error())
 	}
-	return providers, nil
+	providersLen := uint64(len(providers))
+	pagination.Count = providersLen
+	if filter.Limit*(filter.Page-1) > providersLen {
+		return pagination, nil
+	}
+	maxIndex := filter.Page * filter.Limit
+	if providersLen-1 < maxIndex {
+		maxIndex = providersLen - 1
+	}
+	pagination.Items = providers[filter.Offset():maxIndex]
+	return pagination, nil
 }
 
 func (s *ServiceFacade) GetStakingProvider(address string) (provider smodels.StakingProvider, err error) {

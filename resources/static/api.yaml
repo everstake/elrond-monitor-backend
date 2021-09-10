@@ -615,6 +615,17 @@ paths:
           description: "Not found"
   /staking/providers:
     get:
+      parameters:
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
       tags:
         - "Staking"
       summary: get all staking providers
@@ -624,9 +635,14 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/staking_provider'
+                type: object
+                properties:
+                  count:
+                    type: number
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/staking_provider'
         404:
           description: "Not found"
   /staking/provider/{address}:

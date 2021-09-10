@@ -29,7 +29,7 @@ type (
 		UpdateValidatorsMap()
 		GetValidatorsMap() ([]byte, error)
 		GetStakeEvents(filter filters.StakeEvents) (items smodels.Pagination, err error)
-		GetStakingProviders() (providers []smodels.StakingProvider, err error)
+		GetStakingProviders(filter filters.StakingProviders) (pagination smodels.Pagination, err error)
 		GetStakingProvider(address string) (provider smodels.StakingProvider, err error)
 		UpdateStakingProviders()
 		GetNode(key string) (node smodels.Node, err error)

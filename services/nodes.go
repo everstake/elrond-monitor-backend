@@ -186,6 +186,21 @@ func (s *ServiceFacade) GetNodes(filter filters.Nodes) (pagination smodels.Pagin
 		}
 		filteredNodes = append(filteredNodes, n)
 	}
+	if filter.SortBy != "" {
+		switch filter.SortBy {
+		case filters.NodesSortByOnline:
+			sort.Slice(filteredNodes, func(i, j int) bool {
+				return filter.Desc == filteredNodes[i].IsActive
+			})
+		case filters.NodesSortByShard:
+			sort.Slice(filteredNodes, func(i, j int) bool {
+				if filter.Desc {
+					return filteredNodes[i].ShardID > filteredNodes[j].ShardID
+				}
+				return filteredNodes[i].ShardID < filteredNodes[j].ShardID
+			})
+		}
+	}
 	nodesLen := uint64(len(filteredNodes))
 	pagination.Count = nodesLen
 	if filter.Limit*(filter.Page-1) > nodesLen {
@@ -195,20 +210,7 @@ func (s *ServiceFacade) GetNodes(filter filters.Nodes) (pagination smodels.Pagin
 	if nodesLen-1 < maxIndex {
 		maxIndex = nodesLen - 1
 	}
-	items := filteredNodes[filter.Offset():maxIndex]
-	if filter.SortBy != "" {
-		switch filter.SortBy {
-		case filters.NodesSortByOnline:
-			sort.Slice(items, func(i, j int) bool {
-				return items[i].IsActive && !items[j].IsActive
-			})
-		case filters.NodesSortByShard:
-			sort.Slice(items, func(i, j int) bool {
-				return items[i].ShardID > items[j].ShardID
-			})
-		}
-	}
-	pagination.Items = items
+	pagination.Items = filteredNodes[filter.Offset():maxIndex]
 	return pagination, nil
 }
 
