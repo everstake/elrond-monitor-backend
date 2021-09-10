@@ -20,17 +20,17 @@ type (
 
 	Block struct {
 		// block nonce is a block height
-		AccumulatedFees int64  `json:"accumulatedFees,string"`
-		DeveloperFees   int64  `json:"developerFees,string"`
-		Epoch           uint64 `json:"epoch"`
-		Hash            string `json:"hash"`
-		Nonce           uint64 `json:"nonce"`
-		NumTxs          uint64 `json:"numTxs"`
-		Shard           uint64 `json:"shard"`
-		Timestamp       int64  `json:"timestamp"`
-		Round           uint64 `json:"round"`
-		PrevBlockHash   string `json:"prevBlockHash"`
-		Status          string `json:"status"`
+		AccumulatedFees decimal.Decimal `json:"accumulatedFees"`
+		DeveloperFees   decimal.Decimal `json:"developerFees"`
+		Epoch           uint64          `json:"epoch"`
+		Hash            string          `json:"hash"`
+		Nonce           uint64          `json:"nonce"`
+		NumTxs          uint64          `json:"numTxs"`
+		Shard           uint64          `json:"shard"`
+		Timestamp       int64           `json:"timestamp"`
+		Round           uint64          `json:"round"`
+		PrevBlockHash   string          `json:"prevBlockHash"`
+		Status          string          `json:"status"`
 		Miniblocks      []struct {
 			DestinationShard uint64    `json:"destinationShard"`
 			Hash             string    `json:"hash"`
