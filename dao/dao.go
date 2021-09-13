@@ -47,7 +47,6 @@ type (
 		GetBlocksCount(filter filters.Blocks) (total uint64, err error)
 		GetTransactions(filter filters.Transactions) (txs []data.Transaction, err error)
 		GetTransactionsCount(filter filters.Transactions) (total uint64, err error)
-		GetMiniblocks(filter filters.MiniBlocks) (txs []data.Miniblock, err error)
 		ValidatorsKeys(shard uint64, epoch uint64) (keys data.ValidatorsPublicKeys, err error)
 		GetAccount(address string) (acc data.AccountInfo, err error)
 		GetAccounts(filter filters.Accounts) (accounts []data.AccountInfo, err error)

@@ -160,28 +160,6 @@ func (c *Client) GetMiniblock(hash string) (miniblock data.Miniblock, err error)
 	return miniblock, err
 }
 
-func (c *Client) GetMiniblocks(filter filters.MiniBlocks) (blocks []data.Miniblock, err error) {
-	query := obj{
-		"sort": obj{
-			"timestamp": obj{"order": "desc"},
-		},
-	}
-	if filter.ParentBlockHash != "" {
-		query["bool"] = obj{"must": []obj{
-			{"match": obj{"senderBlockHash": filter.ParentBlockHash}},
-			{"match": obj{"receiverBlockHash": filter.ParentBlockHash}},
-		}}
-	}
-	keys, err := c.search("miniblocks", query, &blocks)
-	if len(keys) != len(blocks) {
-		return blocks, fmt.Errorf("wrong number of keys")
-	}
-	for i, key := range keys {
-		blocks[i].Hash = key
-	}
-	return blocks, err
-}
-
 func (c *Client) GetAccount(address string) (acc data.AccountInfo, err error) {
 	err = c.get("accounts", address, &acc)
 	return acc, err
