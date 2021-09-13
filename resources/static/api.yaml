@@ -813,16 +813,44 @@ paths:
                 items:
                   type: object
                   properties:
-                    provider:
+                    name:
                       type: string
-                    amount:
-                      type: number
-                    delegators:
+                    address:
+                      type: string
+                    t_100:
                       type: object
                       properties:
-                        delegator_address_1:
+                        amount:
                           type: number
-                        delegator_address_2:
+                        Count:
+                          type: number
+                    f_100_t_1k:
+                      type: object
+                      properties:
+                        amount:
+                          type: number
+                        Count:
+                          type: number
+                    f_1k_t_10k:
+                      type: object
+                      properties:
+                        amount:
+                          type: number
+                        Count:
+                          type: number
+                    f_10k_t_100k:
+                      type: object
+                      properties:
+                        amount:
+                          type: number
+                        Count:
+                          type: number
+                    f_100k:
+                      type: object
+                      properties:
+                        amount:
+                          type: number
+                        Count:
                           type: number
         404:
           description: "Not found"
