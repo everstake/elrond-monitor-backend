@@ -87,7 +87,7 @@ func (s *ServiceFacade) updateStats() error {
 		avgTxFee = avgTxFee.Add(f)
 	}
 	if len(txs) > 0 {
-		avgTxFee = avgFee.Div(decimal.New(int64(len(txs)), 0))
+		avgTxFee = avgTxFee.Div(decimal.New(int64(len(txs)), 0))
 	}
 	err = s.setCache(dmodels.StatsStorageKey, smodels.Stats{
 		Price:                  marketData.Price,

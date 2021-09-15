@@ -91,10 +91,10 @@ func (s *ServiceFacade) updateValidators() error {
 		var totalUptime float64
 		providersMap := make(map[string]interface{})
 		for _, n := range ns {
-			stake = stake.Add(n.Stake)
-			topUp = topUp.Add(n.TopUp)
 			score += n.RatingModifier
 			if n.Type == smodels.NodeTypeValidator && n.Status != "inactive" {
+				stake = stake.Add(n.Stake)
+				topUp = topUp.Add(n.TopUp)
 				count++
 				totalUptime += n.UpTime
 			}

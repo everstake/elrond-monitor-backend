@@ -13,7 +13,7 @@ func (ds *DailyStats) GetEconomics() (map[string]decimal.Decimal, error) {
 	}
 	return map[string]decimal.Decimal{
 		TotalFeeKey:    node.ValueToEGLD(data.ErdTotalFees),
-		TotalStakeKey:  node.ValueToEGLD(data.ErdTotalBaseStakedValue),
+		TotalStakeKey:  node.ValueToEGLD(data.ErdTotalBaseStakedValue.Add(data.ErdTotalTopUpValue)),
 		TotalSupplyKey: node.ValueToEGLD(data.ErdTotalSupply),
 		TopUpAmountKey: node.ValueToEGLD(data.ErdTotalTopUpValue),
 	}, nil

@@ -166,6 +166,10 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 			for _, mbTx := range miniBlock.Transactions {
 				tx, err := p.node.GetTransaction(mbTx.Hash)
 				if err != nil {
+					// wrong tx, just skip it
+					if mbTx.Hash == "6455464a475dc3071b5a6d72965c0157fdd925982c2157f7b46942fb1b683e88" {
+						continue
+					}
 					return d, fmt.Errorf("node.GetTransaction(%s): %s", mbTx.Hash, err.Error())
 				}
 
