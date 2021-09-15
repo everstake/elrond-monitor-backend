@@ -1101,6 +1101,8 @@ components:
               type: number
             nodes:
               type: number
+            avatar:
+              type: string
     node:
       type: object
       properties:

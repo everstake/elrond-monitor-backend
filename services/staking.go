@@ -145,6 +145,7 @@ func (s *ServiceFacade) updateStakingProviders() error {
 				Locked:       identity.Locked,
 				StakePercent: identity.StakePercent,
 				Nodes:        identity.Validators,
+				Avatar:       identity.Avatar,
 			}
 		}
 		p := smodels.StakingProvider{

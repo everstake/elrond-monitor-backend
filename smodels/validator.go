@@ -41,6 +41,7 @@ type StakingProviderValidator struct {
 	Locked       decimal.Decimal `json:"locked"`
 	StakePercent float64         `json:"stake_percent"`
 	Nodes        uint64          `json:"nodes"`
+	Avatar       string          `json:"avatar"`
 }
 
 type SourceStakingProvider struct {

@@ -69,6 +69,9 @@ func (s *ServiceFacade) updateValidators() error {
 	var totalStake decimal.Decimal
 	var totalTopUp decimal.Decimal
 	for _, n := range nodes {
+		if n.Status == "inactive"{
+			continue
+		}
 		if n.Identity != "" {
 			identitiesMap[n.Identity] = append(identitiesMap[n.Identity], n)
 		} else {
