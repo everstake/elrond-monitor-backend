@@ -96,6 +96,35 @@ func (c *Client) GetBlocks(filter filters.Blocks) (blocks []data.Block, err erro
 	return blocks, err
 }
 
+func (c *Client) GetLatestBlock(shard uint64) (block data.Block, err error) {
+	query := obj{
+		"sort": obj{
+			"nonce": obj{"order": "desc"},
+		},
+		"size": 1,
+		"query": obj{
+			"match": obj{
+				"shardId": shard,
+			},
+		},
+	}
+	var blocks []data.Block
+	keys, err := c.search("blocks", query, &blocks)
+	if err != nil {
+		return block, fmt.Errorf("search: %s", err.Error())
+	}
+	if len(keys) != len(blocks) {
+		return block, fmt.Errorf("wrong number of keys")
+	}
+	for i, key := range keys {
+		blocks[i].Hash = key
+	}
+	if len(blocks) == 0 {
+		return block, fmt.Errorf("lastest block not found")
+	}
+	return blocks[0], nil
+}
+
 func (c *Client) GetBlocksCount(filter filters.Blocks) (total uint64, err error) {
 	query := obj{}
 	if filter.Nonce != 0 {

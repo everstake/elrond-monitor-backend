@@ -5,10 +5,13 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"github.com/ElrondNetwork/elastic-indexer-go/data"
 	"github.com/everstake/elrond-monitor-backend/config"
 	"github.com/everstake/elrond-monitor-backend/dao"
 	"github.com/everstake/elrond-monitor-backend/dao/dmodels"
+	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/log"
+	"github.com/everstake/elrond-monitor-backend/services/es"
 	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/shopspring/decimal"
 	"math/big"
@@ -31,9 +34,10 @@ type (
 	Parser struct {
 		cfg       config.Config
 		node      node.APIi
+		es        *es.Client
 		dao       dao.DAO
 		fetcherCh chan uint64
-		saverCh   chan data
+		saverCh   chan parsedData
 		accounts  map[string]struct{}
 		ctx       context.Context
 		cancel    context.CancelFunc
@@ -42,7 +46,7 @@ type (
 		mu          *sync.RWMutex
 		delegations map[string]map[string]decimal.Decimal
 	}
-	data struct {
+	parsedData struct {
 		height      uint64
 		delegations []dmodels.Delegation
 		rewards     []dmodels.Reward
@@ -51,14 +55,19 @@ type (
 	ShardIndex uint64
 )
 
-func NewParser(cfg config.Config, d dao.DAO) *Parser {
+func NewParser(cfg config.Config, d dao.DAO) (*Parser, error) {
+	esClient, err := es.NewClient(cfg.ElasticSearch.Address)
+	if err != nil {
+		return nil, fmt.Errorf("es.NewClient: %s", err.Error())
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Parser{
 		cfg:       cfg,
 		dao:       d,
 		node:      node.NewAPI(cfg.Parser.Node, cfg.Contracts),
+		es:        esClient,
 		fetcherCh: make(chan uint64, fetcherChBuffer),
-		saverCh:   make(chan data, saverChBuffer),
+		saverCh:   make(chan parsedData, saverChBuffer),
 		accounts:  make(map[string]struct{}),
 		ctx:       ctx,
 		cancel:    cancel,
@@ -66,7 +75,7 @@ func NewParser(cfg config.Config, d dao.DAO) *Parser {
 
 		mu:          &sync.RWMutex{},
 		delegations: make(map[string]map[string]decimal.Decimal),
-	}
+	}, nil
 }
 
 func (p *Parser) Run() error {
@@ -84,13 +93,14 @@ func (p *Parser) Run() error {
 
 	go p.saving()
 	for {
-		networkStatus, err := p.node.GetNetworkStatus(node.MetaChainShardIndex)
+		block, err := p.es.GetLatestBlock(node.MetaChainShardIndex)
 		if err != nil {
-			log.Error("Parser: node.GetMaxHeight: %s", err.Error())
+			log.Error("Parser: es.GetLatestBlock: %s", err.Error())
 			<-time.After(time.Second)
 			continue
 		}
-		latestBlock := networkStatus.ErdNonce
+
+		latestBlock := block.Nonce
 		if model.Height >= latestBlock {
 			<-time.After(time.Second)
 			continue
@@ -137,33 +147,42 @@ func (p *Parser) runFetcher() {
 	}
 }
 
-func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
+func (p *Parser) parseHyperBlock(nonce uint64) (d parsedData, err error) {
 	d.height = nonce
 
-	hyperBlock, err := p.node.GetHyperBlock(nonce)
+	blocks, err := p.es.GetBlocks(filters.Blocks{
+		Shard:      []uint64{node.MetaChainShardIndex},
+		Nonce:      nonce,
+		Pagination: filters.Pagination{Limit: 1},
+	})
 	if err != nil {
-		return d, fmt.Errorf("node.GetHyperBlock: %s", err.Error())
+		return d, fmt.Errorf("es.GetBlocks: %s", err.Error())
 	}
+	if len(blocks) != 1 {
+		return d, fmt.Errorf("can`t fetch block")
+	}
+	hyperBlock := blocks[0]
 
-	hyperBlocks := make([]node.Block, 0)
-	metaChainBlock, err := p.node.GetBlockByHash(hyperBlock.Hash, node.MetaChainShardIndex)
-	if err != nil {
-		return d, fmt.Errorf("api.GetBlockByHash(%s): %s", hyperBlock.Hash, err.Error())
-	}
-	hyperBlocks = append(hyperBlocks, metaChainBlock)
-	for _, ShardBlockInfo := range hyperBlock.Shardblocks {
-		block, err := p.node.GetBlockByHash(ShardBlockInfo.Hash, ShardBlockInfo.Shard)
+	hyperBlocks := make([]data.Block, 0)
+	hyperBlocks = append(hyperBlocks, hyperBlock)
+	for _, bHash := range hyperBlock.NotarizedBlocksHashes {
+		block, err := p.es.GetBlock(bHash)
 		if err != nil {
-			return d, fmt.Errorf("api.GetBlockByHash(%s): %s", ShardBlockInfo.Hash, err.Error())
+			return d, fmt.Errorf("es.GetBlock(%s): %s", bHash, err.Error())
 		}
 		hyperBlocks = append(hyperBlocks, block)
 	}
 
 	for _, block := range hyperBlocks {
-		t := time.Unix(block.Timestamp, 0)
+		t := time.Unix(int64(block.Timestamp), 0)
 
-		for _, miniBlock := range block.Miniblocks {
-			for _, mbTx := range miniBlock.Transactions {
+		for _, miniBlockHash := range block.MiniBlocksHashes {
+			txs, err := p.es.GetTransactions(filters.Transactions{MiniBlock: miniBlockHash})
+			if err != nil {
+				return d, fmt.Errorf("dao.GetTransactions(miniblock:%s): %s", miniBlockHash, err.Error())
+			}
+
+			for _, mbTx := range txs {
 				tx, err := p.node.GetTransaction(mbTx.Hash)
 				if err != nil {
 					// wrong tx, just skip it
@@ -217,6 +236,11 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 					if err != nil {
 						return d, fmt.Errorf("[tx_hash: %s] parseRewardClaims: %s", mbTx.Hash, err.Error())
 					}
+				case "unBondTokens":
+					err = d.unBondTokens(tx, mbTx.Hash, t)
+					if err != nil {
+						return d, fmt.Errorf("[tx_hash: %s] unBondTokens: %s", mbTx.Hash, err.Error())
+					}
 				default:
 					if strings.Contains(txType, "unBond") {
 						err = d.parseUnbond(tx, mbTx.Hash, t)
@@ -236,6 +260,12 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 							return d, fmt.Errorf("[tx_hash: %s] parseUnstake: %s", mbTx.Hash, err.Error())
 						}
 					}
+					if strings.Contains(txType, "unStakeTokens") {
+						err = d.parseUnStakeTokens(tx, txType, mbTx.Hash, t)
+						if err != nil {
+							return d, fmt.Errorf("[tx_hash: %s] unStakeTokens: %s", mbTx.Hash, err.Error())
+						}
+					}
 				}
 			}
 		}
@@ -245,11 +275,12 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d data, err error) {
 	return d, nil
 }
 
-func (d *data) parseDelegations(tx node.Tx, txHash string, t time.Time) error {
-	if !checkSCResults(tx.SmartContractResults, 2) {
-		log.Warn("Parser: parseDelegations: checkSCResults: false (tx: %s)", txHash)
+func (d *parsedData) parseDelegations(tx node.Tx, txHash string, t time.Time) error {
+	if !findOK(tx.SmartContractResults) {
+		log.Warn("Parser: parseDelegations: findOK: false (tx: %s)", txHash)
 		return nil
 	}
+
 	amount, err := decimal.NewFromString(tx.Value)
 	if err != nil {
 		return fmt.Errorf("decimal.NewFromString: %s", err.Error())
@@ -273,7 +304,7 @@ func (d *data) parseDelegations(tx node.Tx, txHash string, t time.Time) error {
 	return nil
 }
 
-func (d *data) parseRewardClaims(tx node.Tx, txHash string, nonce uint64, t time.Time) error {
+func (d *parsedData) parseRewardClaims(tx node.Tx, txHash string, nonce uint64, t time.Time) error {
 	if len(tx.SmartContractResults) != 2 {
 		log.Warn("Parser [tx_hash: %s]: parseRewardClaims: len(tx.ScResults) != 2", txHash)
 		return nil
@@ -309,7 +340,7 @@ func (d *data) parseRewardClaims(tx node.Tx, txHash string, nonce uint64, t time
 	return nil
 }
 
-func (d *data) parseRewardDelegations(tx node.Tx, txHash string, nonce uint64, t time.Time) error {
+func (d *parsedData) parseRewardDelegations(tx node.Tx, txHash string, nonce uint64, t time.Time) error {
 	if !checkSCResults(tx.SmartContractResults, 2) {
 		log.Warn("Parser: parseRewardDelegations: checkSCResults: false (tx: %s)", txHash)
 		return nil
@@ -349,9 +380,9 @@ func (d *data) parseRewardDelegations(tx node.Tx, txHash string, nonce uint64, t
 	return nil
 }
 
-func (d *data) parseUndelegations(tx node.Tx, txHash string, txType string, t time.Time) error {
-	if !checkSCResults(tx.SmartContractResults, 2) {
-		log.Warn("Parser: parseUndelegations: checkSCResults: false (tx: %s)", txHash)
+func (d *parsedData) parseUndelegations(tx node.Tx, txHash string, txType string, t time.Time) error {
+	if !findOK(tx.SmartContractResults) {
+		log.Warn("Parser: parseUndelegations: findOK: false (tx: %s)", txHash)
 		return nil
 	}
 	amountData := strings.TrimPrefix(txType, "unDelegate@")
@@ -383,9 +414,9 @@ func (d *data) parseUndelegations(tx node.Tx, txHash string, txType string, t ti
 	return nil
 }
 
-func (d *data) parseStake(tx node.Tx, txHash string, t time.Time) error {
-	if !checkSCResults(tx.SmartContractResults, 1) {
-		log.Warn("Parser: parseStake: checkSCResults: false (tx: %s)", txHash)
+func (d *parsedData) parseStake(tx node.Tx, txHash string, t time.Time) error {
+	if !findOK(tx.SmartContractResults) {
+		log.Warn("Parser: parseStake: findOK: false (tx: %s)", txHash)
 		return nil
 	}
 	amount, err := decimal.NewFromString(tx.Value)
@@ -404,20 +435,20 @@ func (d *data) parseStake(tx node.Tx, txHash string, t time.Time) error {
 	return nil
 }
 
-func (d *data) parseWithdraw(tx node.Tx, txHash string, t time.Time) error {
-	findOK := false
-	var amount decimal.Decimal
-	for _, result := range tx.SmartContractResults {
-		if result.Data == msgOKBase64 || result.Data == msgOKHex {
-			findOK = true
-		}
-		if result.Receiver == tx.Sender {
-			amount = node.ValueToEGLD(result.Value)
-		}
-	}
-	if !findOK {
+func (d *parsedData) parseWithdraw(tx node.Tx, txHash string, t time.Time) error {
+	if !findOK(tx.SmartContractResults) {
+		log.Warn("Parser: parseDelegations: findOK: false (tx: %s)", txHash)
 		return nil
 	}
+
+	amount := decimal.Zero
+	for _, res := range tx.SmartContractResults {
+		if tx.Sender == res.Receiver && tx.Receiver == res.Sender && res.Data == "" {
+			amount = node.ValueToEGLD(res.Value)
+			break
+		}
+	}
+
 	if tooMuchValue(amount) {
 		log.Warn("Parser [tx_hash: %s]: parseWithdraw: too much value", txHash)
 		return nil
@@ -434,9 +465,9 @@ func (d *data) parseWithdraw(tx node.Tx, txHash string, t time.Time) error {
 	return nil
 }
 
-func (d *data) parseUnstake(tx node.Tx, txType string, txHash string, t time.Time) error {
-	if !checkSCResults(tx.SmartContractResults, 1) {
-		log.Warn("Parser: parseUnstake: checkSCResults: false (tx: %s)", txHash)
+func (d *parsedData) parseUnstake(tx node.Tx, txType string, txHash string, t time.Time) error {
+	if !findOK(tx.SmartContractResults) {
+		log.Warn("Parser: parseUnstake: findOK: false (tx: %s)", txHash)
 		return nil
 	}
 	amountData := strings.TrimPrefix(txType, "unStake@")
@@ -461,7 +492,34 @@ func (d *data) parseUnstake(tx node.Tx, txType string, txHash string, t time.Tim
 	return nil
 }
 
-func (d *data) parseUnbond(tx node.Tx, txHash string, t time.Time) error {
+func (d *parsedData) parseUnStakeTokens(tx node.Tx, txType string, txHash string, t time.Time) error {
+	if !findOK(tx.SmartContractResults) {
+		log.Warn("Parser: parseUnStakeTokens: findOK: false (tx: %s)", txHash)
+		return nil
+	}
+	amountData := strings.TrimPrefix(txType, "unStakeTokens@")
+	a, err := decimalFromHex(amountData)
+	if err != nil {
+		log.Warn("Parser [tx_hash: %s]: parseUnStakeTokens: decimalFromHex: %S", txHash, err.Error())
+		return nil
+	}
+	if tooMuchValue(a) {
+		log.Warn("Parser [tx_hash: %s]: parseUnStakeTokens: too much value", txHash)
+		return nil
+	}
+	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
+		TxHash:    txHash,
+		Type:      dmodels.UnStakeEventType,
+		Validator: tx.Receiver,
+		Delegator: tx.Sender,
+		Epoch:     tx.Epoch,
+		Amount:    a.Neg(),
+		CreatedAt: t,
+	})
+	return nil
+}
+
+func (d *parsedData) parseUnbond(tx node.Tx, txHash string, t time.Time) error {
 	if len(tx.SmartContractResults) != 2 {
 		log.Warn("Parser [tx_hash: %s]: parseUnbond: len SmartContractResults != 2", txHash)
 		return nil
@@ -499,6 +557,29 @@ func (d *data) parseUnbond(tx node.Tx, txHash string, t time.Time) error {
 	return nil
 }
 
+func (d *parsedData) unBondTokens(tx node.Tx, txHash string, t time.Time) error {
+	if !findOK(tx.SmartContractResults) {
+		log.Warn("Parser: unBondTokens: findOK: false (tx: %s)", txHash)
+		return nil
+	}
+	amount := decimal.Zero
+	for _, res := range tx.SmartContractResults {
+		if tx.Sender == res.Receiver && tx.Receiver == res.Sender && res.Data == "" {
+			amount = node.ValueToEGLD(res.Value)
+		}
+	}
+	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
+		TxHash:    txHash,
+		Type:      dmodels.UnBondEventType,
+		Validator: tx.Receiver,
+		Delegator: tx.Sender,
+		Epoch:     tx.Epoch,
+		Amount:    amount,
+		CreatedAt: t,
+	})
+	return nil
+}
+
 func (p *Parser) saving() {
 	var model dmodels.Parser
 	for {
@@ -514,7 +595,7 @@ func (p *Parser) saving() {
 
 	ticker := time.After(time.Second)
 
-	var dataset []data
+	var dataset []parsedData
 
 	for {
 		select {
@@ -547,7 +628,7 @@ func (p *Parser) saving() {
 			count = int(p.cfg.Parser.Batch)
 		}
 
-		var singleData data
+		var singleData parsedData
 		for _, item := range dataset[:count] {
 			singleData.delegations = append(singleData.delegations, item.delegations...)
 			singleData.rewards = append(singleData.rewards, item.rewards...)
@@ -641,6 +722,21 @@ func checkSCResults(results []node.SmartContractResult, expectedLen int) bool {
 		return results[okIndex].Data == msgOKBase64 || results[okIndex].Data == msgOKHex
 	}
 	return false
+}
+
+func findOK(results []node.SmartContractResult) bool {
+	found := false
+	for _, res := range results {
+		if existOK(res.Data) {
+			found = true
+			break
+		}
+	}
+	return found
+}
+
+func existOK(data string) bool {
+	return data == msgOKBase64 || data == msgOKHex
 }
 
 func tooMuchValue(d decimal.Decimal) bool {

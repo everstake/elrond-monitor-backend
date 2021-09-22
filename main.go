@@ -36,7 +36,10 @@ func main() {
 		log.Fatalf("dao.NewDAO: %s", err.Error())
 	}
 
-	prs := parser.NewParser(cfg, d)
+	prs, err := parser.NewParser(cfg, d)
+	if err != nil {
+		log.Fatalf("parser.NewParse: %s", err.Error())
+	}
 
 	s, err := services.NewServices(d, cfg, prs)
 	if err != nil {
