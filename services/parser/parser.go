@@ -2,7 +2,6 @@ package parser
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"github.com/ElrondNetwork/elastic-indexer-go/data"
@@ -174,96 +173,90 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d parsedData, err error) {
 	}
 
 	for _, block := range hyperBlocks {
-		t := time.Unix(int64(block.Timestamp), 0)
-
 		for _, miniBlockHash := range block.MiniBlocksHashes {
 			txs, err := p.es.GetTransactions(filters.Transactions{MiniBlock: miniBlockHash})
 			if err != nil {
 				return d, fmt.Errorf("dao.GetTransactions(miniblock:%s): %s", miniBlockHash, err.Error())
 			}
 
-			for _, mbTx := range txs {
-				tx, err := p.node.GetTransaction(mbTx.Hash)
+			for _, t := range txs {
+				tx, err := p.es.GetTransaction(t.Hash)
 				if err != nil {
-					// wrong tx, just skip it
-					if mbTx.Hash == "6455464a475dc3071b5a6d72965c0157fdd925982c2157f7b46942fb1b683e88" {
-						continue
-					}
-					return d, fmt.Errorf("node.GetTransaction(%s): %s", mbTx.Hash, err.Error())
+					return d, fmt.Errorf("es.GetTransaction: %s", err.Error())
+				}
+				tx.Hash = t.Hash
+				if tx.Hash == "6455464a475dc3071b5a6d72965c0157fdd925982c2157f7b46942fb1b683e88" {
+					continue
 				}
 
 				switch strings.ToLower(tx.Status) {
 				case dmodels.TxStatusPending:
-					return d, fmt.Errorf("found pending tx: %s", mbTx.Hash)
+					return d, fmt.Errorf("found pending tx: %s", tx.Hash)
 				case dmodels.TxStatusSuccess, dmodels.TxStatusFail, dmodels.TxStatusInvalid:
 				default:
 					return d, fmt.Errorf("unknown tx status: %s", tx.Status)
-				}
-
-				decodedBytes, err := base64.StdEncoding.DecodeString(tx.Data)
-				if err != nil {
-					return d, fmt.Errorf("base64.DecodeString: %s", err.Error())
 				}
 
 				if tx.Status != dmodels.TxStatusSuccess {
 					continue
 				}
 
-				txType := string(decodedBytes)
-				switch txType {
+				epoch := uint64(block.Epoch)
+
+				switch string(tx.Data) {
 				case "withdraw":
-					err = d.parseWithdraw(tx, mbTx.Hash, t)
+					err = d.parseWithdraw(tx, epoch)
 					if err != nil {
-						return d, fmt.Errorf("[tx_hash: %s] parseWithdraw: %s", mbTx.Hash, err.Error())
+						return d, fmt.Errorf("[tx_hash: %s] parseWithdraw: %s", tx.Hash, err.Error())
 					}
 				case "stake":
-					err = d.parseStake(tx, mbTx.Hash, t)
+					err = d.parseStake(tx, epoch)
 					if err != nil {
 						return d, fmt.Errorf("parseStake: %s", err.Error())
 					}
 				case "reDelegateRewards": // create delegation + claimRewards
-					err = d.parseRewardDelegations(tx, mbTx.Hash, nonce, t)
+					err = d.parseRewardDelegations(tx, nonce, epoch)
 					if err != nil {
-						return d, fmt.Errorf("[tx_hash: %s] parseRewardDelegations: %s", mbTx.Hash, err.Error())
+						return d, fmt.Errorf("[tx_hash: %s] parseRewardDelegations: %s", tx.Hash, err.Error())
 					}
 				case "delegate":
-					err = d.parseDelegations(tx, mbTx.Hash, t)
+					err = d.parseDelegations(tx, epoch)
 					if err != nil {
-						return d, fmt.Errorf("[tx_hash: %s] parseDelegations: %s", mbTx.Hash, err.Error())
+						return d, fmt.Errorf("[tx_hash: %s] parseDelegations: %s", tx.Hash, err.Error())
 					}
 				case "claimRewards":
-					err = d.parseRewardClaims(tx, mbTx.Hash, nonce, t)
+					err = d.parseRewardClaims(tx, nonce, epoch)
 					if err != nil {
-						return d, fmt.Errorf("[tx_hash: %s] parseRewardClaims: %s", mbTx.Hash, err.Error())
+						return d, fmt.Errorf("[tx_hash: %s] parseRewardClaims: %s", tx.Hash, err.Error())
 					}
 				case "unBondTokens":
-					err = d.unBondTokens(tx, mbTx.Hash, t)
+					err = d.unBondTokens(tx, epoch)
 					if err != nil {
-						return d, fmt.Errorf("[tx_hash: %s] unBondTokens: %s", mbTx.Hash, err.Error())
+						return d, fmt.Errorf("[tx_hash: %s] unBondTokens: %s", tx.Hash, err.Error())
 					}
 				default:
-					if strings.Contains(txType, "unBond") {
-						err = d.parseUnbond(tx, mbTx.Hash, t)
+					if strings.Contains(string(tx.Data), "unBond") {
+						err = d.parseUnbond(tx, epoch)
 						if err != nil {
-							return d, fmt.Errorf("[tx_hash: %s] parseUnbond: %s", mbTx.Hash, err.Error())
+							return d, fmt.Errorf("[tx_hash: %s] parseUnbond: %s", tx.Hash, err.Error())
 						}
 					}
-					if strings.Contains(txType, "unDelegate") {
-						err = d.parseUndelegations(tx, mbTx.Hash, txType, t)
+					if strings.Contains(string(tx.Data), "unDelegate") {
+						err = d.parseUndelegations(tx, epoch)
 						if err != nil {
-							return d, fmt.Errorf("[tx_hash: %s] parseUndelegations: %s", mbTx.Hash, err.Error())
+							return d, fmt.Errorf("[tx_hash: %s] parseUndelegations: %s", tx.Hash, err.Error())
 						}
 					}
-					if strings.Contains(txType, "unStake") {
-						err = d.parseUnstake(tx, txType, mbTx.Hash, t)
+					if strings.Contains(string(tx.Data), "unStake") {
+						err = d.parseUnstake(tx, epoch)
 						if err != nil {
-							return d, fmt.Errorf("[tx_hash: %s] parseUnstake: %s", mbTx.Hash, err.Error())
+							return d, fmt.Errorf("[tx_hash: %s] parseUnstake: %s", tx.Hash, err.Error())
 						}
 					}
-					if strings.Contains(txType, "unStakeTokens") {
-						err = d.parseUnStakeTokens(tx, txType, mbTx.Hash, t)
+					if strings.Contains(string(tx.Data), "unStakeTokens") {
+						err = d.parseUnStakeTokens(tx, epoch)
 						if err != nil {
-							return d, fmt.Errorf("[tx_hash: %s] unStakeTokens: %s", mbTx.Hash, err.Error())
+							return d, fmt.Errorf("[tx_hash: %s] unStakeTokens: %s", tx.Hash, err.Error())
 						}
 					}
 				}
@@ -275,9 +268,9 @@ func (p *Parser) parseHyperBlock(nonce uint64) (d parsedData, err error) {
 	return d, nil
 }
 
-func (d *parsedData) parseDelegations(tx node.Tx, txHash string, t time.Time) error {
-	if !findOK(tx.SmartContractResults) {
-		log.Warn("Parser: parseDelegations: findOK: false (tx: %s)", txHash)
+func (d *parsedData) parseDelegations(tx es.Tx, epoch uint64) error {
+	if !findOK(tx.SCResults) {
+		log.Warn("Parser: parseDelegations: findOK: false (tx: %s)", tx.Hash)
 		return nil
 	}
 
@@ -287,136 +280,144 @@ func (d *parsedData) parseDelegations(tx node.Tx, txHash string, t time.Time) er
 	}
 	d.delegations = append(d.delegations, dmodels.Delegation{
 		Delegator: tx.Sender,
-		TxHash:    txHash,
+		TxHash:    tx.Hash,
 		Validator: tx.Receiver,
 		Amount:    node.ValueToEGLD(amount),
-		CreatedAt: t,
+		CreatedAt: time.Unix(int64(tx.Timestamp), 0),
 	})
 	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
-		TxHash:    txHash,
+		TxHash:    tx.Hash,
 		Type:      dmodels.DelegateStakeEventType,
 		Validator: tx.Receiver,
 		Delegator: tx.Sender,
-		Epoch:     tx.Epoch,
+		Epoch:     epoch,
 		Amount:    node.ValueToEGLD(amount),
-		CreatedAt: t,
+		CreatedAt: time.Unix(int64(tx.Timestamp), 0),
 	})
 	return nil
 }
 
-func (d *parsedData) parseRewardClaims(tx node.Tx, txHash string, nonce uint64, t time.Time) error {
-	if len(tx.SmartContractResults) != 2 {
-		log.Warn("Parser [tx_hash: %s]: parseRewardClaims: len(tx.ScResults) != 2", txHash)
+func (d *parsedData) parseRewardClaims(tx es.Tx, nonce uint64, epoch uint64) error {
+	if len(tx.SCResults) != 2 {
+		log.Warn("Parser [tx_hash: %s]: parseRewardClaims: len(tx.ScResults) != 2", tx.Hash)
 		return nil
 	}
 	rewardsIndex := 0
-	if tx.SmartContractResults[0].Data == msgOKBase64 || tx.SmartContractResults[0].Data == msgOKHex {
+	if string(tx.SCResults[0].Data) == msgOKBase64 || string(tx.SCResults[0].Data) == msgOKHex {
 		rewardsIndex = 1
-	} else if tx.SmartContractResults[1].Data != msgOKBase64 && tx.SmartContractResults[1].Data != msgOKHex {
-		log.Warn("Parser [tx_hash: %s]: parseRewardClaims: can`t find OK msg", txHash)
+	} else if string(tx.SCResults[1].Data) != msgOKBase64 && string(tx.SCResults[1].Data) != msgOKHex {
+		log.Warn("Parser [tx_hash: %s]: parseRewardClaims: can`t find OK msg", tx.Hash)
 		return nil
 	}
-	amount := node.ValueToEGLD(tx.SmartContractResults[rewardsIndex].Value)
+	value, err := decimal.NewFromString(tx.SCResults[rewardsIndex].Value)
+	if err != nil {
+		return fmt.Errorf("decimal.NewFromString(%s): %s", tx.SCResults[rewardsIndex].Value, err.Error())
+	}
+	amount := node.ValueToEGLD(value)
 	if tooMuchValue(amount) {
-		log.Warn("Parser [tx_hash: %s]: parseRewardClaims: too much value", txHash)
+		log.Warn("Parser [tx_hash: %s]: parseRewardClaims: too much value", tx.Hash)
 		return nil
 	}
 	d.rewards = append(d.rewards, dmodels.Reward{
 		HypeblockID:     nonce,
-		TxHash:          txHash,
+		TxHash:          tx.Hash,
 		ReceiverAddress: tx.Sender,
 		Amount:          amount,
-		CreatedAt:       t,
+		CreatedAt:       time.Unix(int64(tx.Timestamp), 0),
 	})
 	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
-		TxHash:    txHash,
+		TxHash:    tx.Hash,
 		Type:      dmodels.ClaimRewardsEventType,
 		Validator: tx.Receiver,
 		Delegator: tx.Sender,
-		Epoch:     tx.Epoch,
+		Epoch:     epoch,
 		Amount:    amount,
-		CreatedAt: t,
+		CreatedAt: time.Unix(int64(tx.Timestamp), 0),
 	})
 	return nil
 }
 
-func (d *parsedData) parseRewardDelegations(tx node.Tx, txHash string, nonce uint64, t time.Time) error {
-	if !checkSCResults(tx.SmartContractResults, 2) {
-		log.Warn("Parser: parseRewardDelegations: checkSCResults: false (tx: %s)", txHash)
+func (d *parsedData) parseRewardDelegations(tx es.Tx, nonce uint64, epoch uint64) error {
+	if !checkSCResults(tx.SCResults, 2) {
+		log.Warn("Parser: parseRewardDelegations: checkSCResults: false (tx: %s)", tx.Hash)
 		return nil
 	}
-	amount := tx.SmartContractResults[0].Value
-	if len(tx.SmartContractResults[1].Data) == 0 {
-		amount = tx.SmartContractResults[1].Value
+	value := tx.SCResults[0].Value
+	if len(tx.SCResults[1].Data) == 0 {
+		value = tx.SCResults[1].Value
+	}
+	amount, err := decimal.NewFromString(value)
+	if err != nil {
+		return fmt.Errorf("decimal.NewFromString(%s): %s", value, err.Error())
 	}
 	amount = node.ValueToEGLD(amount)
 	if tooMuchValue(amount) {
-		log.Warn("Parser [tx_hash: %s]: parseRewardDelegations: too much value", txHash)
+		log.Warn("Parser [tx_hash: %s]: parseRewardDelegations: too much value", tx.Hash)
 		return nil
 	}
 	d.rewards = append(d.rewards, dmodels.Reward{
 		HypeblockID:     nonce,
-		TxHash:          txHash,
+		TxHash:          tx.Hash,
 		ReceiverAddress: tx.Sender,
 		Amount:          amount,
-		CreatedAt:       t,
+		CreatedAt:       time.Unix(int64(tx.Timestamp), 0),
 	})
 	d.delegations = append(d.delegations, dmodels.Delegation{
 		Delegator: tx.Sender,
-		TxHash:    txHash,
+		TxHash:    tx.Hash,
 		Validator: tx.Receiver,
 		Amount:    amount,
-		CreatedAt: t,
+		CreatedAt: time.Unix(int64(tx.Timestamp), 0),
 	})
 	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
-		TxHash:    txHash,
+		TxHash:    tx.Hash,
 		Type:      dmodels.ReDelegateRewardsEventType,
 		Validator: tx.Receiver,
 		Delegator: tx.Sender,
-		Epoch:     tx.Epoch,
+		Epoch:     epoch,
 		Amount:    amount,
-		CreatedAt: t,
+		CreatedAt: time.Unix(int64(tx.Timestamp), 0),
 	})
 	return nil
 }
 
-func (d *parsedData) parseUndelegations(tx node.Tx, txHash string, txType string, t time.Time) error {
-	if !findOK(tx.SmartContractResults) {
-		log.Warn("Parser: parseUndelegations: findOK: false (tx: %s)", txHash)
+func (d *parsedData) parseUndelegations(tx es.Tx, epoch uint64) error {
+	if !findOK(tx.SCResults) {
+		log.Warn("Parser: parseUndelegations: findOK: false (tx: %s)", tx.Hash)
 		return nil
 	}
-	amountData := strings.TrimPrefix(txType, "unDelegate@")
+	amountData := strings.TrimPrefix(string(tx.Data), "unDelegate@")
 	a, err := decimalFromHex(amountData)
 	if err != nil {
-		log.Warn("Parser [tx_hash: %s]: decimalFromHex: %s", txHash, err.Error())
+		log.Warn("Parser [tx_hash: %s]: decimalFromHex: %s", tx.Hash, err.Error())
 		return nil
 	}
 	if tooMuchValue(a) {
-		log.Warn("Parser [tx_hash: %s]: parseUndelegations: too much value", txHash)
+		log.Warn("Parser [tx_hash: %s]: parseUndelegations: too much value", tx.Hash)
 		return nil
 	}
 	d.delegations = append(d.delegations, dmodels.Delegation{
 		Delegator: tx.Sender,
-		TxHash:    txHash,
+		TxHash:    tx.Hash,
 		Validator: tx.Receiver,
 		Amount:    a.Neg(),
-		CreatedAt: t,
+		CreatedAt: time.Unix(int64(tx.Timestamp), 0),
 	})
 	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
-		TxHash:    txHash,
+		TxHash:    tx.Hash,
 		Type:      dmodels.UnDelegateStakeEventType,
 		Validator: tx.Receiver,
 		Delegator: tx.Sender,
-		Epoch:     tx.Epoch,
+		Epoch:     epoch,
 		Amount:    a.Neg(),
-		CreatedAt: t,
+		CreatedAt: time.Unix(int64(tx.Timestamp), 0),
 	})
 	return nil
 }
 
-func (d *parsedData) parseStake(tx node.Tx, txHash string, t time.Time) error {
-	if !findOK(tx.SmartContractResults) {
-		log.Warn("Parser: parseStake: findOK: false (tx: %s)", txHash)
+func (d *parsedData) parseStake(tx es.Tx, epoch uint64) error {
+	if !findOK(tx.SCResults) {
+		log.Warn("Parser: parseStake: findOK: false (tx: %s)", tx.Hash)
 		return nil
 	}
 	amount, err := decimal.NewFromString(tx.Value)
@@ -424,158 +425,171 @@ func (d *parsedData) parseStake(tx node.Tx, txHash string, t time.Time) error {
 		return fmt.Errorf("decimal.NewFromString: %s", err.Error())
 	}
 	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
-		TxHash:    txHash,
+		TxHash:    tx.Hash,
 		Type:      dmodels.StakeStakeEventType,
 		Validator: tx.Receiver,
 		Delegator: tx.Sender,
-		Epoch:     tx.Epoch,
+		Epoch:     epoch,
 		Amount:    node.ValueToEGLD(amount),
-		CreatedAt: t,
+		CreatedAt: time.Unix(int64(tx.Timestamp), 0),
 	})
 	return nil
 }
 
-func (d *parsedData) parseWithdraw(tx node.Tx, txHash string, t time.Time) error {
-	if !findOK(tx.SmartContractResults) {
-		log.Warn("Parser: parseDelegations: findOK: false (tx: %s)", txHash)
+func (d *parsedData) parseWithdraw(tx es.Tx, epoch uint64) error {
+	if !findOK(tx.SCResults) {
+		log.Warn("Parser: parseWithdraw: findOK: false (tx: %s)", tx.Hash)
 		return nil
 	}
 
 	amount := decimal.Zero
-	for _, res := range tx.SmartContractResults {
-		if tx.Sender == res.Receiver && tx.Receiver == res.Sender && res.Data == "" {
-			amount = node.ValueToEGLD(res.Value)
+	for _, res := range tx.SCResults {
+		if tx.Sender == res.Receiver && tx.Receiver == res.Sender && string(res.Data) == "" {
+			amount, err := decimal.NewFromString(tx.Value)
+			if err != nil {
+				return fmt.Errorf("decimal.NewFromString: %s", err.Error())
+			}
+			amount = node.ValueToEGLD(amount)
 			break
 		}
 	}
 
 	if tooMuchValue(amount) {
-		log.Warn("Parser [tx_hash: %s]: parseWithdraw: too much value", txHash)
+		log.Warn("Parser [tx_hash: %s]: parseWithdraw: too much value", tx.Hash)
 		return nil
 	}
 	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
-		TxHash:    txHash,
+		TxHash:    tx.Hash,
 		Type:      dmodels.WithdrawEventType,
 		Validator: tx.Receiver,
 		Delegator: tx.Sender,
-		Epoch:     tx.Epoch,
+		Epoch:     epoch,
 		Amount:    amount,
-		CreatedAt: t,
+		CreatedAt: time.Unix(int64(tx.Timestamp), 0),
 	})
 	return nil
 }
 
-func (d *parsedData) parseUnstake(tx node.Tx, txType string, txHash string, t time.Time) error {
-	if !findOK(tx.SmartContractResults) {
-		log.Warn("Parser: parseUnstake: findOK: false (tx: %s)", txHash)
+func (d *parsedData) parseUnstake(tx es.Tx, epoch uint64) error {
+	if !findOK(tx.SCResults) {
+		log.Warn("Parser: parseUnstake: findOK: false (tx: %s)", tx.Hash)
 		return nil
 	}
-	amountData := strings.TrimPrefix(txType, "unStake@")
+	amountData := strings.TrimPrefix(string(tx.Data), "unStake@")
 	a, err := decimalFromHex(amountData)
 	if err != nil {
-		log.Warn("Parser [tx_hash: %s]: decimalFromHex: %S", txHash, err.Error())
+		log.Warn("Parser [tx_hash: %s]: decimalFromHex: %s", tx.Hash, err.Error())
 		return nil
 	}
 	if tooMuchValue(a) {
-		log.Warn("Parser [tx_hash: %s]: parseUnstake: too much value", txHash)
+		log.Warn("Parser [tx_hash: %s]: parseUnstake: too much value", tx.Hash)
 		return nil
 	}
 	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
-		TxHash:    txHash,
+		TxHash:    tx.Hash,
 		Type:      dmodels.UnStakeEventType,
 		Validator: tx.Receiver,
 		Delegator: tx.Sender,
-		Epoch:     tx.Epoch,
+		Epoch:     epoch,
 		Amount:    a.Neg(),
-		CreatedAt: t,
+		CreatedAt: time.Unix(int64(tx.Timestamp), 0),
 	})
 	return nil
 }
 
-func (d *parsedData) parseUnStakeTokens(tx node.Tx, txType string, txHash string, t time.Time) error {
-	if !findOK(tx.SmartContractResults) {
-		log.Warn("Parser: parseUnStakeTokens: findOK: false (tx: %s)", txHash)
+func (d *parsedData) parseUnStakeTokens(tx es.Tx, epoch uint64) error {
+	if !findOK(tx.SCResults) {
+		log.Warn("Parser: parseUnStakeTokens: findOK: false (tx: %s)", tx.Hash)
 		return nil
 	}
-	amountData := strings.TrimPrefix(txType, "unStakeTokens@")
+	amountData := strings.TrimPrefix(string(tx.Data), "unStakeTokens@")
 	a, err := decimalFromHex(amountData)
 	if err != nil {
-		log.Warn("Parser [tx_hash: %s]: parseUnStakeTokens: decimalFromHex: %S", txHash, err.Error())
+		log.Warn("Parser [tx_hash: %s]: parseUnStakeTokens: decimalFromHex: %s", tx.Hash, err.Error())
 		return nil
 	}
 	if tooMuchValue(a) {
-		log.Warn("Parser [tx_hash: %s]: parseUnStakeTokens: too much value", txHash)
+		log.Warn("Parser [tx_hash: %s]: parseUnStakeTokens: too much value", tx.Hash)
 		return nil
 	}
 	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
-		TxHash:    txHash,
+		TxHash:    tx.Hash,
 		Type:      dmodels.UnStakeEventType,
 		Validator: tx.Receiver,
 		Delegator: tx.Sender,
-		Epoch:     tx.Epoch,
+		Epoch:     epoch,
 		Amount:    a.Neg(),
-		CreatedAt: t,
+		CreatedAt: time.Unix(int64(tx.Timestamp), 0),
 	})
 	return nil
 }
 
-func (d *parsedData) parseUnbond(tx node.Tx, txHash string, t time.Time) error {
-	if len(tx.SmartContractResults) != 2 {
-		log.Warn("Parser [tx_hash: %s]: parseUnbond: len SmartContractResults != 2", txHash)
+func (d *parsedData) parseUnbond(tx es.Tx, epoch uint64) error {
+	if len(tx.SCResults) != 2 {
+		log.Warn("Parser [tx_hash: %s]: parseUnbond: len SmartContractResults != 2", tx.Hash)
 		return nil
 	}
 	okIndex := 1
 	amountIndex := 0
-	if tx.SmartContractResults[1].Data == "delegation stake unbond" {
+	if string(tx.SCResults[1].Data) == "delegation stake unbond" {
 		okIndex = 0
 		amountIndex = 1
-	} else if tx.SmartContractResults[0].Data != "delegation stake unbond" {
-		log.Warn("Parser [tx_hash: %s]: parseUnbond: can`t find `delegation stake unbond`", txHash)
+	} else if string(tx.SCResults[0].Data) != "delegation stake unbond" {
+		log.Warn("Parser [tx_hash: %s]: parseUnbond: can`t find `delegation stake unbond`", tx.Hash)
 		return nil
 	}
 
-	if tx.SmartContractResults[okIndex].Data != msgOKBase64 && tx.SmartContractResults[okIndex].Data != msgOKHex {
-		log.Warn("Parser [tx_hash: %s]: parseUnbond: ok not found (%s)`", txHash, tx.SmartContractResults[okIndex].Data)
+	if !strings.Contains(string(tx.SCResults[okIndex].Data), msgOKBase64) && !strings.Contains(string(tx.SCResults[okIndex].Data), msgOKHex) {
+		log.Warn("Parser [tx_hash: %s]: parseUnbond: ok not found (%s)`", tx.Hash, tx.SCResults[okIndex].Data)
 		return nil
 	}
 
-	value := node.ValueToEGLD(tx.SmartContractResults[amountIndex].Value)
+	amount, err := decimal.NewFromString(tx.SCResults[amountIndex].Value)
+	if err != nil {
+		return fmt.Errorf("decimal.NewFromString: %s", err.Error())
+	}
+
+	value := node.ValueToEGLD(amount)
 	if tooMuchValue(value) {
-		log.Warn("Parser [tx_hash: %s]: parseUnbond: too much value", txHash)
+		log.Warn("Parser [tx_hash: %s]: parseUnbond: too much value", tx.Hash)
 		return nil
 	}
 
 	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
-		TxHash:    txHash,
+		TxHash:    tx.Hash,
 		Type:      dmodels.UnBondEventType,
 		Validator: tx.Receiver,
 		Delegator: tx.Sender,
-		Epoch:     tx.Epoch,
+		Epoch:     epoch,
 		Amount:    value,
-		CreatedAt: t,
+		CreatedAt: time.Unix(int64(tx.Timestamp), 0),
 	})
 	return nil
 }
 
-func (d *parsedData) unBondTokens(tx node.Tx, txHash string, t time.Time) error {
-	if !findOK(tx.SmartContractResults) {
-		log.Warn("Parser: unBondTokens: findOK: false (tx: %s)", txHash)
+func (d *parsedData) unBondTokens(tx es.Tx, epoch uint64) error {
+	if !findOK(tx.SCResults) {
+		log.Warn("Parser: unBondTokens: findOK: false (tx: %s)", tx.Hash)
 		return nil
 	}
 	amount := decimal.Zero
-	for _, res := range tx.SmartContractResults {
-		if tx.Sender == res.Receiver && tx.Receiver == res.Sender && res.Data == "" {
-			amount = node.ValueToEGLD(res.Value)
+	for _, res := range tx.SCResults {
+		if tx.Sender == res.Receiver && tx.Receiver == res.Sender && string(res.Data) == "" {
+			amount, err := decimal.NewFromString(res.Value)
+			if err != nil {
+				return fmt.Errorf("decimal.NewFromString: %s", err.Error())
+			}
+			amount = node.ValueToEGLD(amount)
 		}
 	}
 	d.stakeEvents = append(d.stakeEvents, dmodels.StakeEvent{
-		TxHash:    txHash,
+		TxHash:    tx.Hash,
 		Type:      dmodels.UnBondEventType,
 		Validator: tx.Receiver,
 		Delegator: tx.Sender,
-		Epoch:     tx.Epoch,
+		Epoch:     epoch,
 		Amount:    amount,
-		CreatedAt: t,
+		CreatedAt: time.Unix(int64(tx.Timestamp), 0),
 	})
 	return nil
 }
@@ -707,27 +721,27 @@ func decimalFromHex(hexStr string) (result decimal.Decimal, err error) {
 	return node.ValueToEGLD(decimal.NewFromBigInt(a, 0)), nil
 }
 
-func checkSCResults(results []node.SmartContractResult, expectedLen int) bool {
+func checkSCResults(results []es.SCResult, expectedLen int) bool {
 	if len(results) != expectedLen {
 		return false
 	}
 	switch expectedLen {
 	case 1:
-		return results[0].Data == msgOKBase64 || results[0].Data == msgOKHex
+		return string(results[0].Data) == msgOKBase64 || string(results[0].Data) == msgOKHex
 	case 2:
 		okIndex := 0
 		if len(results[0].Data) == 0 {
 			okIndex = 1
 		}
-		return results[okIndex].Data == msgOKBase64 || results[okIndex].Data == msgOKHex
+		return string(results[okIndex].Data) == msgOKBase64 || string(results[okIndex].Data) == msgOKHex
 	}
 	return false
 }
 
-func findOK(results []node.SmartContractResult) bool {
+func findOK(results []es.SCResult) bool {
 	found := false
 	for _, res := range results {
-		if existOK(res.Data) {
+		if existOK(string(res.Data)) {
 			found = true
 			break
 		}
