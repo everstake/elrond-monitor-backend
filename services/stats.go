@@ -145,8 +145,9 @@ func (s *ServiceFacade) updateValidatorStats() error {
 		}
 		stake = stake.Add(n.Locked)
 	}
+	auctionAddress, _ := s.node.GetAddress(s.cfg.Contracts.Auction)
 	err = s.setCache(dmodels.ValidatorStatsStorageKey, smodels.ValidatorStats{
-		ActiveStake:   stake,
+		ActiveStake:   node.ValueToEGLD(auctionAddress.Balance),
 		Validators:    uint64(len(validators)),
 		ObserverNodes: observerNodes,
 		StakingAPR:    apr.Truncate(2),

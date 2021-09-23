@@ -33,6 +33,7 @@ type (
 		market  market.Provider
 		stopSig chan struct{}
 		actions []action
+		cfg     config.Config
 	}
 
 	action func() (map[string]decimal.Decimal, error)
@@ -48,6 +49,7 @@ func NewDailyStats(cfg config.Config, d dao.DAO) (*DailyStats, error) {
 		node:    node.NewAPI(cfg.Parser.Node, cfg.Contracts),
 		stopSig: make(chan struct{}),
 		market:  m,
+		cfg:     cfg,
 	}
 	ds.actions = []action{
 		ds.GetMarket,
