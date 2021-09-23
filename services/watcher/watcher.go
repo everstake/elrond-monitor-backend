@@ -2,11 +2,13 @@ package watcher
 
 import (
 	"fmt"
-	"github.com/ElrondNetwork/elastic-indexer-go/data"
 	"github.com/everstake/elrond-monitor-backend/api/ws"
 	"github.com/everstake/elrond-monitor-backend/dao"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/log"
+	"github.com/everstake/elrond-monitor-backend/services/node"
+	"github.com/everstake/elrond-monitor-backend/smodels"
+	"github.com/shopspring/decimal"
 	"time"
 )
 
@@ -64,12 +66,24 @@ func (w *Watcher) Run() (err error) {
 				log.Warn("Watcher: dao.GetBlocks: %s", err.Error())
 				continue
 			}
-			var newBlocks []data.Block
+			var newBlocks []smodels.Block
 			maxBlockTime := w.lastBlockTime
 			for _, block := range blocks {
 				t := int64(block.Timestamp)
 				if t > w.lastBlockTime {
-					newBlocks = append(newBlocks, block)
+					newBlocks = append(newBlocks, smodels.Block{
+						Hash:          block.Hash,
+						Nonce:         block.Nonce,
+						Shard:         uint64(block.ShardID),
+						Epoch:         uint64(block.Epoch),
+						TxCount:       uint64(block.TxCount),
+						Size:          block.Size,
+						Miniblocks:    block.MiniBlocksHashes,
+						PubKeyBitmap:  block.PubKeyBitmap,
+						StateRootHash: block.StateRootHash,
+						PrevHash:      block.PrevHash,
+						Timestamp:     smodels.NewTime(time.Unix(int64(block.Timestamp), 0)),
+					})
 				}
 				if t > maxBlockTime {
 					maxBlockTime = t
@@ -91,12 +105,29 @@ func (w *Watcher) Run() (err error) {
 				log.Warn("Watcher: dao.GetTransactions: %s", err.Error())
 				continue
 			}
-			var newTxs []data.Transaction
+			var newTxs []smodels.Tx
 			maxTxTime := w.lastTxTime
 			for _, tx := range txs {
 				t := int64(tx.Timestamp)
 				if t > w.lastTxTime {
-					newTxs = append(newTxs, tx)
+					val, _ := decimal.NewFromString(tx.Value)
+					fee, _ := decimal.NewFromString(tx.Fee)
+					newTxs = append(newTxs, smodels.Tx{
+						Hash:          tx.Hash,
+						Status:        tx.Status,
+						From:          tx.Sender,
+						To:            tx.Receiver,
+						Value:         node.ValueToEGLD(val),
+						Fee:           node.ValueToEGLD(fee),
+						GasUsed:       tx.GasUsed,
+						GasPrice:      tx.GasPrice,
+						MiniblockHash: tx.MBHash,
+						ShardFrom:     uint64(tx.SenderShard),
+						ShardTo:       uint64(tx.ReceiverShard),
+						Signature:     tx.Signature,
+						Data:          string(tx.Data),
+						Timestamp:     smodels.NewTime(time.Unix(int64(tx.Timestamp), 0)),
+					})
 				}
 				if t > maxTxTime {
 					maxTxTime = t
