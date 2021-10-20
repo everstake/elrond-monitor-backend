@@ -24,4 +24,5 @@ type ValidatorStats struct {
 	ObserverNodes uint64          `json:"observer_nodes"`
 	StakingAPR    decimal.Decimal `json:"staking_apr"`
 	Queue         uint64          `json:"queue"`
+	ActiveNodes   uint64          `json:"active_nodes"`
 }
