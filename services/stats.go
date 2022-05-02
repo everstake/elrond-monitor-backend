@@ -133,8 +133,7 @@ func (s *ServiceFacade) updateValidatorStats() error {
 	if len(providers) > 0 {
 		apr = apr.Div(decimal.New(int64(len(providers)), 0))
 	}
-	var observerNodes uint64
-	var queue uint64
+	var observerNodes, queue, activeNode uint64
 	stake := decimal.Zero
 	for _, n := range nodes {
 		if n.Type == smodels.NodeTypeObserver {
@@ -143,14 +142,19 @@ func (s *ServiceFacade) updateValidatorStats() error {
 		if n.Status == smodels.NodeStatusQueued {
 			queue++
 		}
+		if n.Type == smodels.NodeTypeValidator && n.Status == smodels.NodeStatusEligible || n.Status == smodels.NodeStatusWaiting {
+			activeNode++
+		}
 		stake = stake.Add(n.Locked)
 	}
+	auctionAddress, _ := s.node.GetAddress(s.cfg.Contracts.Auction)
 	err = s.setCache(dmodels.ValidatorStatsStorageKey, smodels.ValidatorStats{
-		ActiveStake:   stake,
+		ActiveStake:   node.ValueToEGLD(auctionAddress.Balance),
 		Validators:    uint64(len(validators)),
 		ObserverNodes: observerNodes,
 		StakingAPR:    apr.Truncate(2),
 		Queue:         queue,
+		ActiveNodes:   activeNode,
 	})
 	if err != nil {
 		return fmt.Errorf("setCache: %s", err.Error())
