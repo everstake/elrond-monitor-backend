@@ -240,7 +240,6 @@ func (c *Client) GetESDTAccountsCount(filter filters.ESDT) (total uint64, err er
 }
 
 func (c *Client) GetTokenInfo(id string) (token data.TokenInfo, err error) {
-	fmt.Println(id)
 	err = c.get("tokens", id, &token)
 	return token, err
 }
