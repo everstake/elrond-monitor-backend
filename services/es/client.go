@@ -270,9 +270,6 @@ func (c *Client) GetNFTTokens(filter filters.NFTTokens) (txs []data.TokenInfo, e
 
 func (c *Client) GetNFTTokensCount(filter filters.NFTTokens) (total uint64, err error) {
 	query := obj{
-		"sort": obj{
-			"timestamp": obj{"order": "desc"},
-		},
 		"query": obj{
 			"match_phrase": obj{
 				"identifier": filter.Collection,
