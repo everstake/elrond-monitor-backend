@@ -39,6 +39,13 @@ type (
 		GetValidatorStats() (stats smodels.ValidatorStats, err error)
 		MakeRanking()
 		GetRanking() (items []smodels.Ranking, err error)
+		UpdateTokens()
+		GetToken(id string) (token smodels.Token, err error)
+		GetTokens(filter filters.Tokens) (pagination smodels.Pagination, err error)
+		GetNFTCollection(id string) (collection smodels.NFTCollection, err error)
+		GetNFTCollections(filter filters.NFTCollections) (pagination smodels.Pagination, err error)
+		GetNFT(id string) (sNFT smodels.NFT, err error)
+		GetNFTs(filter filters.NFTTokens) (pagination smodels.Pagination, err error)
 	}
 	parser interface {
 		GetDelegations(delegator string) map[string]decimal.Decimal

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/btcsuite/btcutil/bech32"
 	"github.com/everstake/elrond-monitor-backend/config"
@@ -12,6 +13,8 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -33,6 +36,9 @@ const (
 	heartbeatstatusEndpoint      = "/node/heartbeatstatus"
 	networkEconomicsEndpoint     = "/network/economics"
 	vmValuesEndpoint             = "/vm-values/query"
+	esdtsEndpoint                = "/network/esdts"
+	fungibleESDTEndpoint         = "/network/esdt/fungible-tokens"
+	esdtSupplyEndpoint           = "/network/esdt/supply/%s"
 )
 
 var precisionDiv = decimal.New(1, Precision)
@@ -71,6 +77,11 @@ type (
 		GetQueue() (items []QueueItem, err error)
 		GetOwner(bls string) (owner string, err error)
 		GetTotalStakedTopUpStakedBlsKeys(address string) (stake StakeTopup, err error)
+		GetESDTProperties(identifier string) (prop ESDTProperties, err error)
+		GetESDTAllAddressesAndRoles(identifier string) (addresses []AddressAndRoles, err error)
+		GetESDTs() (tokens []string, err error)
+		GetFungibleESDTs() (tokens []string, err error)
+		GetESDTSupply(ident string) (supply decimal.Decimal, err error)
 	}
 )
 
@@ -140,6 +151,21 @@ func (api *API) GetNetworkConfig() (ne NetworkConfig, err error) {
 	return ne, err
 }
 
+func (api *API) GetESDTs() (tokens []string, err error) {
+	err = api.get(esdtsEndpoint, &tokens, "tokens")
+	return tokens, err
+}
+
+func (api *API) GetFungibleESDTs() (tokens []string, err error) {
+	err = api.get(fungibleESDTEndpoint, &tokens, "tokens")
+	return tokens, err
+}
+
+func (api *API) GetESDTSupply(ident string) (supply decimal.Decimal, err error) {
+	err = api.get(fmt.Sprintf(esdtSupplyEndpoint, ident), &supply, "supply")
+	return supply, err
+}
+
 func (api *API) GetUserStake(address string) (us UserStake, err error) {
 	hexAddress, err := addressToHex(address)
 	if err != nil {
@@ -204,6 +230,84 @@ func (api *API) GetProviderAddresses() (addresses []string, err error) {
 		if err != nil {
 			return nil, fmt.Errorf("base64ToAddress: %s", err.Error())
 		}
+	}
+	return addresses, nil
+}
+
+func (api *API) GetESDTProperties(identifier string) (prop ESDTProperties, err error) {
+	hexIdentifier := hex.EncodeToString([]byte(identifier))
+	rows, err := api.contractCall(ContractReq{
+		SCAddress: api.contracts.ESDTContract,
+		FuncName:  "getTokenProperties",
+		Args:      []string{hexIdentifier},
+	})
+	if err != nil {
+		return prop, fmt.Errorf("contractCall: %s", err.Error())
+	}
+	if len(rows) != 18 {
+		return prop, fmt.Errorf("wrong count of rows, got %d", len(rows))
+	}
+	decimalsStr := strings.TrimPrefix(mustB64Decode(rows[5]), "NumDecimals-")
+	decimals, err := strconv.ParseUint(decimalsStr, 10, 64)
+	if err != nil {
+		return prop, fmt.Errorf("wrong decimals %s", decimalsStr)
+	}
+	getBool := func(text string, prefix string) bool {
+		if strings.TrimPrefix(mustB64Decode(text), prefix) == "true" {
+			return true
+		}
+		return false
+	}
+	owner, err := base64ToAddress(rows[2])
+	if err != nil {
+		return prop, fmt.Errorf("base64ToAddress: %s", err.Error())
+	}
+	return ESDTProperties{
+		Name:                     mustB64Decode(rows[0]),
+		Type:                     mustB64Decode(rows[1]),
+		Owner:                    owner,
+		Decimals:                 uint(decimals),
+		IsPaused:                 getBool(rows[6], "IsPaused-"),
+		CanUpgrade:               getBool(rows[7], "CanUpgrade-"),
+		CanMint:                  getBool(rows[8], "CanMint-"),
+		CanBurn:                  getBool(rows[9], "CanBurn-"),
+		CanChangeOwner:           getBool(rows[10], "CanChangeOwner-"),
+		CanPause:                 getBool(rows[11], "CanPause-"),
+		CanFreeze:                getBool(rows[12], "CanFreeze-"),
+		CanWipe:                  getBool(rows[13], "CanWipe-"),
+		CanAddSpecialRoles:       getBool(rows[14], "CanAddSpecialRoles-"),
+		CanTransferNFTCreateRole: getBool(rows[15], "canTransferNFTCreateRole-"),
+		NFTCreateStopped:         getBool(rows[16], "NFTCreateStopped-"),
+		Wiped:                    getBool(rows[17], "Wiped-"),
+	}, nil
+}
+
+func (api *API) GetESDTAllAddressesAndRoles(identifier string) (addresses []AddressAndRoles, err error) {
+	hexIdentifier := hex.EncodeToString([]byte(identifier))
+	rows, err := api.contractCall(ContractReq{
+		SCAddress: api.contracts.ESDTContract,
+		FuncName:  "getAllAddressesAndRoles",
+		Args:      []string{hexIdentifier},
+	})
+	if err != nil {
+		return addresses, fmt.Errorf("contractCall: %s", err.Error())
+	}
+	for _, row := range rows {
+		if len(row) == 44 {
+			address, err := base64ToAddress(row)
+			if err != nil {
+				return addresses, fmt.Errorf("can`t convert %s to address: %s", row, err.Error())
+			}
+			addresses = append(addresses, AddressAndRoles{
+				Address: address,
+			})
+			continue
+		}
+		if len(addresses) == 0 {
+			return addresses, errors.New("incorrect response, address must be first")
+		}
+		role := mustB64Decode(row)
+		addresses[len(addresses)-1].Roles = append(addresses[len(addresses)-1].Roles, role)
 	}
 	return addresses, nil
 }

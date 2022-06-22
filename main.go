@@ -60,6 +60,7 @@ func main() {
 	sch.AddProcessWithInterval(s.UpdateNodes, time.Hour)
 	sch.AddProcessWithInterval(s.UpdateValidators, time.Hour)
 	sch.AddProcessWithInterval(s.MakeRanking, time.Hour)
+	sch.AddProcessWithInterval(s.UpdateTokens, time.Hour)
 
 	w := watcher.NewWatcher(d, apiServer.WS)
 

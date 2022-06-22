@@ -47,6 +47,7 @@ type (
 		DelegationManager string
 		Delegation        string
 		Auction           string
+		ESDTContract      string
 	}
 )
 

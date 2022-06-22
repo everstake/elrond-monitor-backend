@@ -232,4 +232,26 @@ type (
 		Address  string
 		Blses    []string
 	}
+	ESDTProperties struct {
+		Name                     string `json:"name"`
+		Type                     string `json:"type"`
+		Owner                    string `json:"owner"`
+		Decimals                 uint   `json:"decimals"`
+		IsPaused                 bool   `json:"isPaused"`
+		CanUpgrade               bool   `json:"canUpgrade"`
+		CanMint                  bool   `json:"canMint"`
+		CanBurn                  bool   `json:"canBurn"`
+		CanChangeOwner           bool   `json:"canChangeOwner"`
+		CanPause                 bool   `json:"canPause"`
+		CanFreeze                bool   `json:"canFreeze"`
+		CanWipe                  bool   `json:"canWipe"`
+		CanAddSpecialRoles       bool   `json:"canAddSpecialRoles"`
+		CanTransferNFTCreateRole bool   `json:"canTransferNFTCreateRole"`
+		NFTCreateStopped         bool   `json:"NFTCreateStopped"`
+		Wiped                    bool   `json:"wiped"`
+	}
+	AddressAndRoles struct {
+		Address string   `json:"address"`
+		Roles   []string `json:"roles"`
+	}
 )
