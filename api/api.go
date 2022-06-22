@@ -130,6 +130,14 @@ func (api *API) loadRoutes() {
 		{Path: "/validator/{identity}", Method: http.MethodGet, Func: api.GetValidator},
 		{Path: "/stats/validators", Method: http.MethodGet, Func: api.GetValidatorStats},
 		{Path: "/providers/ranking", Method: http.MethodGet, Func: api.GetRanking},
+
+		// tokens
+		{Path: "/token/{identifier}", Method: http.MethodGet, Func: api.GetToken},
+		{Path: "/tokens", Method: http.MethodGet, Func: api.GetTokens},
+		{Path: "/nft/collection/{identifier}", Method: http.MethodGet, Func: api.GetNFTCollection},
+		{Path: "/nft/collections", Method: http.MethodGet, Func: api.GetNFTCollections},
+		{Path: "/nft/{identifier}", Method: http.MethodGet, Func: api.GetNFT},
+		{Path: "/nfts", Method: http.MethodGet, Func: api.GetNFTs},
 	})
 
 }

@@ -37,6 +37,20 @@ type (
 		// daily stats
 		CreateDailyStats(stats []dmodels.DailyStat) error
 		GetDailyStatsRange(filter filters.DailyStats) (items []dmodels.DailyStat, err error)
+
+		// tokens
+		CreateToken(token dmodels.Token) error
+		UpdateToken(token dmodels.Token) error
+		GetTokens(filter filters.Tokens) (tokens []dmodels.Token, err error)
+		GetTokensCount(filter filters.Tokens) (total uint64, err error)
+		GetToken(ident string) (token dmodels.Token, err error)
+
+		// nft collections
+		CreateNFTCollection(collection dmodels.NFTCollection) error
+		UpdateNFTCollection(collection dmodels.NFTCollection) error
+		GetNFTCollections(filter filters.NFTCollections) (collections []dmodels.NFTCollection, err error)
+		GetNFTCollectionsTotal(filter filters.NFTCollections) (total uint64, err error)
+		GetNFTCollection(ident string) (collection dmodels.NFTCollection, err error)
 	}
 
 	ElasticSearch interface {
@@ -51,6 +65,13 @@ type (
 		GetAccount(address string) (acc data.AccountInfo, err error)
 		GetAccounts(filter filters.Accounts) (accounts []data.AccountInfo, err error)
 		GetAccountsCount(filter filters.Accounts) (total uint64, err error)
+		GetESDTAccounts(filter filters.ESDT) (accounts []es.AccountESDT, err error)
+		GetESDTAccountsCount(filter filters.ESDT) (total uint64, err error)
+		GetOperations(filter filters.Operations) (txs []es.Operation, err error)
+		GetOperationsCount(filter filters.Operations) (total uint64, err error)
+		GetTokenInfo(id string) (token data.TokenInfo, err error)
+		GetNFTTokens(filter filters.NFTTokens) (txs []data.TokenInfo, err error)
+		GetNFTTokensCount(filter filters.NFTTokens) (total uint64, err error)
 	}
 
 	DAO interface {

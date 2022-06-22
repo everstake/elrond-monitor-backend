@@ -3,7 +3,7 @@ module github.com/everstake/elrond-monitor-backend
 go 1.15
 
 require (
-	github.com/ElrondNetwork/elastic-indexer-go v1.1.4
+	github.com/ElrondNetwork/elastic-indexer-go v1.2.32
 	github.com/Masterminds/squirrel v1.5.0
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/elastic/go-elasticsearch/v7 v7.14.0

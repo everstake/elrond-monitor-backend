@@ -8,6 +8,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v7/esutil"
 	"github.com/everstake/elrond-monitor-backend/dao/derrors"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
+	"github.com/shopspring/decimal"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -45,6 +46,26 @@ type (
 	SCResult struct {
 		data.ScResult
 		ResultHash string `json:"hash"`
+	}
+	AccountESDT struct {
+		Address    string          `json:"address"`
+		Balance    decimal.Decimal `json:"balance"`
+		BalanceNum decimal.Decimal `json:"balanceNum"`
+		Token      string          `json:"token"`
+		TokenNonce uint64          `json:"tokenNonce"`
+	}
+	Operation struct {
+		Nonce          uint64            `json:"nonce"`
+		Sender         string            `json:"sender"`
+		Receiver       string            `json:"receiver"`
+		OriginalTxHash string            `json:"originalTxHash"`
+		Timestamp      uint64            `json:"timestamp"`
+		Status         string            `json:"status"`
+		SenderShard    uint64            `json:"senderShard"`
+		ReceiverShard  uint64            `json:"receiverShard"`
+		Operation      string            `json:"operation"`
+		Tokens         []string          `json:"tokens"`
+		ESDTValues     []decimal.Decimal `json:"esdtValues"`
 	}
 	obj map[string]interface{}
 )
@@ -185,6 +206,113 @@ func (c *Client) GetAccounts(filter filters.Accounts) (accounts []data.AccountIn
 		accounts[i].Address = key
 	}
 	return accounts, err
+}
+
+func (c *Client) GetESDTAccounts(filter filters.ESDT) (accounts []AccountESDT, err error) {
+	query := obj{
+		"sort": obj{
+			"balanceNum": obj{"order": "desc"},
+		},
+	}
+	if len(filter.TokenIdentifier) != 0 {
+		addQuery(query, filter.TokenIdentifier, "query", "match", "token")
+	}
+	if filter.Limit != 0 {
+		query["size"] = filter.Limit
+	}
+	if filter.Offset() != 0 {
+		query["from"] = filter.Offset()
+	}
+	keys, err := c.search("accountsesdt", query, &accounts)
+	if len(keys) != len(accounts) {
+		return accounts, fmt.Errorf("wrong number of keys")
+	}
+	return accounts, err
+}
+
+func (c *Client) GetESDTAccountsCount(filter filters.ESDT) (total uint64, err error) {
+	query := obj{}
+	if len(filter.TokenIdentifier) != 0 {
+		addQuery(query, filter.TokenIdentifier, "query", "match", "token")
+	}
+	total, err = c.count("accountsesdt", query)
+	return total, err
+}
+
+func (c *Client) GetTokenInfo(id string) (token data.TokenInfo, err error) {
+	fmt.Println(id)
+	err = c.get("tokens", id, &token)
+	return token, err
+}
+
+func (c *Client) GetNFTTokens(filter filters.NFTTokens) (txs []data.TokenInfo, err error) {
+	query := obj{
+		"sort": obj{
+			"timestamp": obj{"order": "desc"},
+		},
+		"query": obj{
+			"match_phrase": obj{
+				"identifier": filter.Collection,
+			},
+		},
+	}
+	if filter.Limit != 0 {
+		query["size"] = filter.Limit
+	}
+	if filter.Offset() != 0 {
+		query["from"] = filter.Offset()
+	}
+	keys, err := c.search("tokens", query, &txs)
+	if len(keys) != len(txs) {
+		return txs, fmt.Errorf("wrong number of keys")
+	}
+	return txs, err
+}
+
+func (c *Client) GetNFTTokensCount(filter filters.NFTTokens) (total uint64, err error) {
+	query := obj{
+		"sort": obj{
+			"timestamp": obj{"order": "desc"},
+		},
+		"query": obj{
+			"match_phrase": obj{
+				"identifier": filter.Collection,
+			},
+		},
+	}
+	total, err = c.count("tokens", query)
+	return total, err
+}
+
+func (c *Client) GetOperations(filter filters.Operations) (txs []Operation, err error) {
+	query := obj{
+		"sort": obj{
+			"timestamp": obj{"order": "desc"},
+		},
+	}
+	if len(filter.Token) != 0 {
+		addQuery(query, filter.Token, "query", "match", "tokens")
+	}
+	if filter.Limit != 0 {
+		query["size"] = filter.Limit
+	}
+	if filter.Offset() != 0 {
+		query["from"] = filter.Offset()
+	}
+	keys, err := c.search("operations", query, &txs)
+	if len(keys) != len(txs) {
+		return txs, fmt.Errorf("wrong number of keys")
+	}
+	return txs, err
+}
+
+func (c *Client) GetOperationsCount(filter filters.Operations) (total uint64, err error) {
+	query := obj{}
+	if len(filter.Token) != 0 {
+		addQuery(query, filter.Token, "query", "match", "tokens")
+	}
+	total, err = c.count("operations", query)
+	return total, err
 }
 
 func (c *Client) GetAccountsCount(filter filters.Accounts) (total uint64, err error) {
