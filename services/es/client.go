@@ -299,6 +299,9 @@ func (c *Client) GetOperations(filter filters.Operations) (txs []Operation, err 
 	if len(keys) != len(txs) {
 		return txs, fmt.Errorf("wrong number of keys")
 	}
+	for i, key := range keys {
+		txs[i].OriginalTxHash = key
+	}
 	return txs, err
 }
 
