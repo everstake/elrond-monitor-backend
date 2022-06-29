@@ -6,6 +6,7 @@ import (
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/everstake/elrond-monitor-backend/smodels"
+	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"net/http"
 )
@@ -78,5 +79,27 @@ func (s *ServiceFacade) GetAccount(address string) (account smodels.Account, err
 		RewardsClaimed:   decimal.Zero, // todo
 		ClaimableRewards: node.ValueToEGLD(claimableRewards),
 		StakingProviders: stakeProviders,
+	}, nil
+}
+
+func (s *ServiceFacade) GetESDTAccounts(filter filters.ESDT) (items smodels.Pagination, err error) {
+	accounts, err := s.dao.GetESDTAccounts(filter)
+	if err != nil {
+		return items, errors.Wrap(err, "get esdt accounts")
+	}
+	total, err := s.dao.GetESDTAccountsCount(filter)
+	if err != nil {
+		return items, errors.Wrap(err, "get total esdt accounts")
+	}
+	acs := make([]smodels.ESDTAccount, len(accounts))
+	for i, acc := range accounts {
+		acs[i] = smodels.ESDTAccount{
+			Address: acc.Address,
+			Balance: acc.Balance,
+		}
+	}
+	return smodels.Pagination{
+		Items: acs,
+		Count: total,
 	}, nil
 }

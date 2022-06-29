@@ -88,7 +88,7 @@ func (db *Postgres) UpdateNFTCollection(collection dmodels.NFTCollection) error 
 }
 
 func (db Postgres) GetNFTCollections(filter filters.NFTCollections) (collections []dmodels.NFTCollection, err error) {
-	q := squirrel.Select("*").From(dmodels.NFTCollectionsTable)
+	q := squirrel.Select("*").From(dmodels.NFTCollectionsTable).OrderBy("nfc_created_at desc")
 	if filter.Limit != 0 {
 		q = q.Limit(filter.Limit)
 	}

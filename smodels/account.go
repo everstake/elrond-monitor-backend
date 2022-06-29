@@ -17,4 +17,8 @@ type (
 		Provider string          `json:"provider"`
 		Stake    decimal.Decimal `json:"stake"`
 	}
+	ESDTAccount struct {
+		Address string          `json:"address"`
+		Balance decimal.Decimal `json:"balance"`
+	}
 )

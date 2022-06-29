@@ -46,6 +46,8 @@ type (
 		GetNFTCollections(filter filters.NFTCollections) (pagination smodels.Pagination, err error)
 		GetNFT(id string) (sNFT smodels.NFT, err error)
 		GetNFTs(filter filters.NFTTokens) (pagination smodels.Pagination, err error)
+		GetOperations(filter filters.Operations) (items smodels.Pagination, err error)
+		GetESDTAccounts(filter filters.ESDT) (items smodels.Pagination, err error)
 	}
 	parser interface {
 		GetDelegations(delegator string) map[string]decimal.Decimal

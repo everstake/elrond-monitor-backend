@@ -45,3 +45,27 @@ func (api *API) GetTransactions(w http.ResponseWriter, r *http.Request) {
 	}
 	jsonData(w, resp)
 }
+
+func (api *API) GetOperations(w http.ResponseWriter, r *http.Request) {
+	var filter filters.Operations
+	err := api.queryDecoder.Decode(&filter, r.URL.Query())
+	if err != nil {
+		log.Debug("API GetOperations: Decode: %s", err.Error())
+		jsonBadRequest(w, "bad params")
+		return
+	}
+	filter.SetMaxLimit(100)
+	err = filter.Validate()
+	if err != nil {
+		log.Debug("API GetOperations: filter.Validate: %s", err.Error())
+		jsonBadRequest(w, err.Error())
+		return
+	}
+	resp, err := api.svc.GetOperations(filter)
+	if err != nil {
+		log.Error("API GetOperations: svc.GetOperations: %s", err.Error())
+		jsonError(err, w)
+		return
+	}
+	jsonData(w, resp)
+}

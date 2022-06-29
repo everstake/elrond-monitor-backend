@@ -130,6 +130,8 @@ func (api *API) loadRoutes() {
 		{Path: "/validator/{identity}", Method: http.MethodGet, Func: api.GetValidator},
 		{Path: "/stats/validators", Method: http.MethodGet, Func: api.GetValidatorStats},
 		{Path: "/providers/ranking", Method: http.MethodGet, Func: api.GetRanking},
+		{Path: "/operations", Method: http.MethodGet, Func: api.GetOperations},
+		{Path: "/esdt/accounts", Method: http.MethodGet, Func: api.GetESDTAccounts},
 
 		// tokens
 		{Path: "/token/{identifier}", Method: http.MethodGet, Func: api.GetToken},

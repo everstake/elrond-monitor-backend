@@ -6,6 +6,7 @@ import (
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/everstake/elrond-monitor-backend/smodels"
+	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"net/http"
 	"time"
@@ -89,5 +90,36 @@ func (s *ServiceFacade) GetTransaction(hash string) (tx smodels.Tx, err error) {
 		Signature:     dTx.Signature,
 		Data:          string(dTx.Data),
 		Timestamp:     smodels.NewTime(time.Unix(int64(dTx.Timestamp), 0)),
+	}, nil
+}
+
+func (s *ServiceFacade) GetOperations(filter filters.Operations) (items smodels.Pagination, err error) {
+	operations, err := s.dao.GetOperations(filter)
+	if err != nil {
+		return items, errors.Wrap(err, "get operations")
+	}
+	total, err := s.dao.GetOperationsCount(filter)
+	if err != nil {
+		return items, errors.Wrap(err, "get total operations")
+	}
+	ops := make([]smodels.Operation, len(operations))
+	for i, op := range operations {
+		ops[i] = smodels.Operation{
+			Nonce:          op.Nonce,
+			Sender:         op.Sender,
+			Receiver:       op.Receiver,
+			OriginalTxHash: op.OriginalTxHash,
+			Timestamp:      op.Timestamp,
+			Status:         op.Status,
+			SenderShard:    op.SenderShard,
+			ReceiverShard:  op.ReceiverShard,
+			Operation:      op.Operation,
+			Tokens:         op.Tokens,
+			ESDTValues:     op.ESDTValues,
+		}
+	}
+	return smodels.Pagination{
+		Items: ops,
+		Count: total,
 	}, nil
 }
