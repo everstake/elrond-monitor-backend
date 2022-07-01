@@ -163,8 +163,12 @@ func toNFTSModel(nft data.TokenInfo) smodels.NFT {
 		assets[i] = base64.StdEncoding.EncodeToString(u)
 	}
 	assetsJSON, _ := json.Marshal(assets)
+	name := nft.Name
+	if nft.Data != nil {
+		name = nft.Data.Name
+	}
 	return smodels.NFT{
-		Name:       nft.Name,
+		Name:       name,
 		Identity:   nft.Identifier,
 		Owner:      nft.CurrentOwner,
 		Creator:    nft.Data.Creator,
