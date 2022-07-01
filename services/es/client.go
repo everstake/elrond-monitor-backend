@@ -287,7 +287,7 @@ func (c *Client) GetOperations(filter filters.Operations) (txs []Operation, err 
 		},
 	}
 	if len(filter.Token) != 0 {
-		addQuery(query, filter.Token, "query", "match", "tokens")
+		addQuery(query, filter.Token, "query", "match_phrase", "tokens")
 	}
 	if filter.Limit != 0 {
 		query["size"] = filter.Limit
@@ -308,7 +308,7 @@ func (c *Client) GetOperations(filter filters.Operations) (txs []Operation, err 
 func (c *Client) GetOperationsCount(filter filters.Operations) (total uint64, err error) {
 	query := obj{}
 	if len(filter.Token) != 0 {
-		addQuery(query, filter.Token, "query", "match", "tokens")
+		addQuery(query, filter.Token, "query", "match_phrase", "tokens")
 	}
 	total, err = c.count("operations", query)
 	return total, err
