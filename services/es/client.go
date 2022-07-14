@@ -215,7 +215,7 @@ func (c *Client) GetESDTAccounts(filter filters.ESDT) (accounts []AccountESDT, e
 		},
 	}
 	if len(filter.TokenIdentifier) != 0 {
-		addQuery(query, filter.TokenIdentifier, "query", "match", "token")
+		addQuery(query, filter.TokenIdentifier, "query", "match_phrase", "token")
 	}
 	if filter.Limit != 0 {
 		query["size"] = filter.Limit
@@ -233,7 +233,7 @@ func (c *Client) GetESDTAccounts(filter filters.ESDT) (accounts []AccountESDT, e
 func (c *Client) GetESDTAccountsCount(filter filters.ESDT) (total uint64, err error) {
 	query := obj{}
 	if len(filter.TokenIdentifier) != 0 {
-		addQuery(query, filter.TokenIdentifier, "query", "match", "token")
+		addQuery(query, filter.TokenIdentifier, "query", "match_phrase", "token")
 	}
 	total, err = c.count("accountsesdt", query)
 	return total, err
