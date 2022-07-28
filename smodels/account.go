@@ -20,5 +20,6 @@ type (
 	ESDTAccount struct {
 		Address string          `json:"address"`
 		Balance decimal.Decimal `json:"balance"`
+		Token   TokenMetaInfo   `json:"token"`
 	}
 )

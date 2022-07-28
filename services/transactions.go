@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"github.com/everstake/elrond-monitor-backend/dao/derrors"
+	"github.com/everstake/elrond-monitor-backend/dao/dmodels"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/everstake/elrond-monitor-backend/smodels"
@@ -60,8 +61,12 @@ func (s *ServiceFacade) GetTransaction(hash string) (tx smodels.Tx, err error) {
 		}
 		return tx, fmt.Errorf("dao.GetTransaction: %s", err.Error())
 	}
-	results := make([]smodels.ScResult, len(dTx.SCResults))
-	for i, r := range dTx.SCResults {
+	scResults, err := s.dao.GetSCResults(hash)
+	if err != nil {
+		return tx, fmt.Errorf("dao.GetSCResults: %s", err.Error())
+	}
+	results := make([]smodels.ScResult, len(scResults))
+	for i, r := range scResults {
 		val, _ := decimal.NewFromString(r.Value)
 		results[i] = smodels.ScResult{
 			Hash:    r.ResultHash,
@@ -102,8 +107,49 @@ func (s *ServiceFacade) GetOperations(filter filters.Operations) (items smodels.
 	if err != nil {
 		return items, errors.Wrap(err, "get total operations")
 	}
+
+	var esdtTokens []string
+	for _, op := range operations {
+		for _, token := range op.Tokens {
+			found := false
+			for _, et := range esdtTokens {
+				if et == token {
+					found = true
+					break
+				}
+			}
+			if !found {
+				esdtTokens = append(esdtTokens, token)
+			}
+		}
+	}
+	esdtTokensMap := make(map[string]dmodels.Token)
+	if len(esdtTokens) > 0 {
+		tokens, err := s.dao.GetTokens(filters.Tokens{Identifier: esdtTokens})
+		if err != nil {
+			return items, errors.Wrap(err, "get tokens")
+		}
+		for _, t := range tokens {
+			esdtTokensMap[t.Identity] = t
+		}
+	}
+
 	ops := make([]smodels.Operation, len(operations))
 	for i, op := range operations {
+		var tokensDetails []smodels.TokenMetaInfo
+		for k, t := range op.Tokens {
+			opToken := smodels.TokenMetaInfo{
+				Identifier: t,
+				Name:       t,
+				Value:      op.ESDTValues[k],
+			}
+			eT, ok := esdtTokensMap[t]
+			if ok {
+				opToken.Name = eT.Name
+				opToken.Decimal = eT.Decimals
+			}
+			tokensDetails = append(tokensDetails, opToken)
+		}
 		ops[i] = smodels.Operation{
 			Nonce:          op.Nonce,
 			Sender:         op.Sender,
@@ -116,6 +162,7 @@ func (s *ServiceFacade) GetOperations(filter filters.Operations) (items smodels.
 			Operation:      op.Operation,
 			Tokens:         op.Tokens,
 			ESDTValues:     op.ESDTValues,
+			TokensDetails:  tokensDetails,
 		}
 	}
 	return smodels.Pagination{

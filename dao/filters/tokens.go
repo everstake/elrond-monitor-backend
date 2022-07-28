@@ -1,6 +1,7 @@
 package filters
 
 type Tokens struct {
+	Identifier []string `schema:"identifier"`
 	Pagination
 }
 
@@ -15,5 +16,6 @@ type NFTCollections struct {
 
 type ESDT struct {
 	TokenIdentifier string `schema:"token_identifier"`
+	Address         string `schema:"address"`
 	Pagination
 }

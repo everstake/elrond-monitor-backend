@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"github.com/everstake/elrond-monitor-backend/dao/derrors"
+	"github.com/everstake/elrond-monitor-backend/dao/dmodels"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
 	"github.com/everstake/elrond-monitor-backend/services/node"
 	"github.com/everstake/elrond-monitor-backend/smodels"
@@ -91,11 +92,45 @@ func (s *ServiceFacade) GetESDTAccounts(filter filters.ESDT) (items smodels.Pagi
 	if err != nil {
 		return items, errors.Wrap(err, "get total esdt accounts")
 	}
+	var esdtTokens []string
+	for _, acc := range accounts {
+		found := false
+		for _, t := range esdtTokens {
+			if t == acc.Token {
+				found = true
+				break
+			}
+		}
+		if !found {
+			esdtTokens = append(esdtTokens, acc.Token)
+		}
+	}
+	esdtTokensMap := make(map[string]dmodels.Token)
+	if len(esdtTokens) > 0 {
+		tokens, err := s.dao.GetTokens(filters.Tokens{Identifier: esdtTokens})
+		if err != nil {
+			return items, errors.Wrap(err, "get tokens")
+		}
+		for _, t := range tokens {
+			esdtTokensMap[t.Identity] = t
+		}
+	}
 	acs := make([]smodels.ESDTAccount, len(accounts))
 	for i, acc := range accounts {
+		mToken := smodels.TokenMetaInfo{
+			Identifier: acc.Token,
+			Name:       acc.Token,
+			Value:      acc.Balance,
+		}
+		eT, ok := esdtTokensMap[acc.Token]
+		if ok {
+			mToken.Name = eT.Name
+			mToken.Decimal = eT.Decimals
+		}
 		acs[i] = smodels.ESDTAccount{
 			Address: acc.Address,
 			Balance: acc.Balance,
+			Token:   mToken,
 		}
 	}
 	return smodels.Pagination{

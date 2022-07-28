@@ -60,6 +60,7 @@ type (
 		GetBlocks(filter filters.Blocks) (blocks []data.Block, err error)
 		GetBlocksCount(filter filters.Blocks) (total uint64, err error)
 		GetTransactions(filter filters.Transactions) (txs []data.Transaction, err error)
+		GetSCResults(txHash string) (results []es.SCResult, err error)
 		GetTransactionsCount(filter filters.Transactions) (total uint64, err error)
 		ValidatorsKeys(shard uint64, epoch uint64) (keys data.ValidatorsPublicKeys, err error)
 		GetAccount(address string) (acc data.AccountInfo, err error)

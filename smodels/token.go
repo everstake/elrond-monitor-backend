@@ -6,6 +6,14 @@ import (
 )
 
 type (
+	NFTCollection struct {
+		Name       string          `json:"name"`
+		Identity   string          `json:"identity"`
+		Owner      string          `json:"owner"`
+		Type       string          `json:"type"`
+		Properties json.RawMessage `json:"properties"`
+		CreatedAt  Time            `json:"created_at"`
+	}
 	NFT struct {
 		Name       string          `json:"name"`
 		Identity   string          `json:"identity"`
@@ -27,12 +35,10 @@ type (
 		Properties json.RawMessage `json:"properties"`
 		Roles      json.RawMessage `json:"roles"`
 	}
-	NFTCollection struct {
+	TokenMetaInfo struct {
+		Identifier string          `json:"identifier"`
 		Name       string          `json:"name"`
-		Identity   string          `json:"identity"`
-		Owner      string          `json:"owner"`
-		Type       string          `json:"type"`
-		Properties json.RawMessage `json:"properties"`
-		CreatedAt  Time            `json:"created_at"`
+		Decimal    uint64          `json:"decimal"`
+		Value      decimal.Decimal `json:"value"`
 	}
 )

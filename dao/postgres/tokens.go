@@ -16,6 +16,7 @@ func (db Postgres) CreateToken(token dmodels.Token) error {
 		"tkn_decimals":   token.Decimals,
 		"tkn_properties": token.Properties,
 		"tkn_roles":      token.Roles,
+		"tkn_operations": token.Operations,
 	})
 	_, err := db.insert(q)
 	return err
@@ -33,12 +34,16 @@ func (db *Postgres) UpdateToken(token dmodels.Token) error {
 			"tkn_decimals":   token.Decimals,
 			"tkn_properties": token.Properties,
 			"tkn_roles":      token.Roles,
+			"tkn_operations": token.Operations,
 		})
 	return db.update(q)
 }
 
 func (db Postgres) GetTokens(filter filters.Tokens) (tokens []dmodels.Token, err error) {
-	q := squirrel.Select("*").From(dmodels.TokensTable)
+	q := squirrel.Select("*").From(dmodels.TokensTable).OrderBy("tkn_operations desc")
+	if len(filter.Identifier) > 0 {
+		q = q.Where(squirrel.Eq{"tkn_identity": filter.Identifier})
+	}
 	if filter.Limit != 0 {
 		q = q.Limit(filter.Limit)
 	}
@@ -51,6 +56,9 @@ func (db Postgres) GetTokens(filter filters.Tokens) (tokens []dmodels.Token, err
 
 func (db Postgres) GetTokensCount(filter filters.Tokens) (total uint64, err error) {
 	q := squirrel.Select("count(*) as total").From(dmodels.TokensTable)
+	if len(filter.Identifier) > 0 {
+		q = q.Where(squirrel.Eq{"tkn_identity": filter.Identifier})
+	}
 	err = db.first(&total, q)
 	return total, err
 }

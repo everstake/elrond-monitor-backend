@@ -7,6 +7,8 @@ type Transactions struct {
 }
 
 type Operations struct {
-	Token string `schema:"token"`
+	Token  string   `schema:"token"`
+	TxHash string   `schema:"tx_hash"`
+	Type   []string `schema:"type"`
 	Pagination
 }

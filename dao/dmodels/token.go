@@ -26,6 +26,7 @@ type Token struct {
 	Decimals   uint64          `db:"tkn_decimals"`
 	Properties []byte          `db:"tkn_properties"`
 	Roles      []byte          `db:"tkn_roles"`
+	Operations uint64          `db:"tkn_operations"`
 }
 
 type NFTCollection struct {

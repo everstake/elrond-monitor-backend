@@ -5,6 +5,7 @@ go 1.15
 require (
 	github.com/ElrondNetwork/elastic-indexer-go v1.2.32
 	github.com/Masterminds/squirrel v1.5.0
+	github.com/aquasecurity/esquery v0.2.0
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/elastic/go-elasticsearch/v7 v7.14.0
 	github.com/golang-migrate/migrate/v4 v4.14.1

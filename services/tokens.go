@@ -61,6 +61,9 @@ func (s *ServiceFacade) updateFungibleToken(tokenIdent string, props node.ESDTPr
 	rolesJSON, _ := json.Marshal(roles)
 	propsJSON, _ := json.Marshal(props)
 	splittedIdent := strings.Split(tokenIdent, "-")
+	operations, err := s.dao.GetOperationsCount(filters.Operations{
+		Token: tokenIdent,
+	})
 	token := dmodels.Token{
 		Identity:   tokenIdent,
 		Name:       splittedIdent[0],
@@ -70,6 +73,7 @@ func (s *ServiceFacade) updateFungibleToken(tokenIdent string, props node.ESDTPr
 		Decimals:   uint64(props.Decimals),
 		Properties: propsJSON,
 		Roles:      rolesJSON,
+		Operations: operations,
 	}
 	_, err = s.dao.GetToken(tokenIdent)
 	if err != nil {

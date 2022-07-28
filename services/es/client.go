@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/ElrondNetwork/elastic-indexer-go/data"
+	"github.com/aquasecurity/esquery"
 	"github.com/elastic/go-elasticsearch/v7"
+	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/elastic/go-elasticsearch/v7/esutil"
 	"github.com/everstake/elrond-monitor-backend/dao/derrors"
 	"github.com/everstake/elrond-monitor-backend/dao/filters"
@@ -41,7 +43,6 @@ type (
 	}
 	Tx struct {
 		data.Transaction
-		SCResults []SCResult `json:"scResults"`
 	}
 	SCResult struct {
 		data.ScResult
@@ -107,7 +108,7 @@ func (c *Client) GetBlocks(filter filters.Blocks) (blocks []data.Block, err erro
 	if filter.Offset() != 0 {
 		query["from"] = filter.Offset()
 	}
-	keys, err := c.search("blocks", query, &blocks)
+	keys, err := c.customSearch("blocks", query, &blocks)
 	if len(keys) != len(blocks) {
 		return blocks, fmt.Errorf("wrong number of keys")
 	}
@@ -125,7 +126,7 @@ func (c *Client) GetBlocksCount(filter filters.Blocks) (total uint64, err error)
 	if len(filter.Shard) > 0 {
 		addQuery(query, filter.Shard[0], "query", "match", "shard")
 	}
-	total, err = c.count("blocks", query)
+	total, err = c.customCount("blocks", query)
 	return total, err
 }
 
@@ -153,7 +154,7 @@ func (c *Client) GetTransactions(filter filters.Transactions) (txs []data.Transa
 	if filter.Offset() != 0 {
 		query["from"] = filter.Offset()
 	}
-	keys, err := c.search("transactions", query, &txs)
+	keys, err := c.customSearch("transactions", query, &txs)
 	if len(keys) != len(txs) {
 		return txs, fmt.Errorf("wrong number of keys")
 	}
@@ -172,13 +173,26 @@ func (c *Client) GetTransactionsCount(filter filters.Transactions) (total uint64
 	if filter.MiniBlock != "" {
 		addQuery(query, filter.MiniBlock, "query", "match", "miniBlockHash")
 	}
-	total, err = c.count("transactions", query)
+	total, err = c.customCount("transactions", query)
 	return total, err
 }
 
 func (c *Client) GetMiniblock(hash string) (miniblock data.Miniblock, err error) {
 	err = c.get("miniblocks", hash, &miniblock)
 	return miniblock, err
+}
+
+func (c *Client) GetSCResults(txHash string) (results []SCResult, err error) {
+	q := esquery.Search()
+	q.Query(esquery.Match("originalTxHash", txHash))
+	keys, err := c.search("scresults", q, &results)
+	if len(keys) != len(results) {
+		return results, fmt.Errorf("wrong number of keys")
+	}
+	for i, h := range keys {
+		results[i].Hash = h
+	}
+	return results, err
 }
 
 func (c *Client) GetAccount(address string) (acc data.AccountInfo, err error) {
@@ -198,7 +212,7 @@ func (c *Client) GetAccounts(filter filters.Accounts) (accounts []data.AccountIn
 	if filter.Offset() != 0 {
 		query["from"] = filter.Offset()
 	}
-	keys, err := c.search("accounts", query, &accounts)
+	keys, err := c.customSearch("accounts", query, &accounts)
 	if len(keys) != len(accounts) {
 		return accounts, fmt.Errorf("wrong number of keys")
 	}
@@ -209,33 +223,34 @@ func (c *Client) GetAccounts(filter filters.Accounts) (accounts []data.AccountIn
 }
 
 func (c *Client) GetESDTAccounts(filter filters.ESDT) (accounts []AccountESDT, err error) {
-	query := obj{
-		"sort": obj{
-			"balanceNum": obj{"order": "desc"},
-		},
+	q := esquery.Search().Sort("balanceNum", "desc")
+	query := esquery.Bool()
+	if filter.TokenIdentifier != "" {
+		query.Must(esquery.Match("token", filter.TokenIdentifier))
 	}
-	if len(filter.TokenIdentifier) != 0 {
-		addQuery(query, filter.TokenIdentifier, "query", "match_phrase", "token")
+	if len(filter.Address) != 0 {
+		query.Must(esquery.MatchPhrase("address", filter.Address))
 	}
+	q.Query(query)
 	if filter.Limit != 0 {
-		query["size"] = filter.Limit
+		q = q.Size(filter.Limit)
 	}
 	if filter.Offset() != 0 {
-		query["from"] = filter.Offset()
+		q = q.From(filter.Offset())
 	}
-	keys, err := c.search("accountsesdt", query, &accounts)
-	if len(keys) != len(accounts) {
-		return accounts, fmt.Errorf("wrong number of keys")
-	}
+	_, err = c.search("accountsesdt", q, &accounts)
 	return accounts, err
 }
 
 func (c *Client) GetESDTAccountsCount(filter filters.ESDT) (total uint64, err error) {
-	query := obj{}
-	if len(filter.TokenIdentifier) != 0 {
-		addQuery(query, filter.TokenIdentifier, "query", "match_phrase", "token")
+	query := esquery.Bool()
+	if filter.TokenIdentifier != "" {
+		query.Must(esquery.Match("token", filter.TokenIdentifier))
 	}
-	total, err = c.count("accountsesdt", query)
+	if len(filter.Address) != 0 {
+		query.Must(esquery.MatchPhrase("address", filter.Address))
+	}
+	total, err = c.count("accountsesdt", esquery.Count(query))
 	return total, err
 }
 
@@ -261,7 +276,7 @@ func (c *Client) GetNFTTokens(filter filters.NFTTokens) (txs []data.TokenInfo, e
 	if filter.Offset() != 0 {
 		query["from"] = filter.Offset()
 	}
-	keys, err := c.search("tokens", query, &txs)
+	keys, err := c.customSearch("tokens", query, &txs)
 	if len(keys) != len(txs) {
 		return txs, fmt.Errorf("wrong number of keys")
 	}
@@ -276,46 +291,56 @@ func (c *Client) GetNFTTokensCount(filter filters.NFTTokens) (total uint64, err 
 			},
 		},
 	}
-	total, err = c.count("tokens", query)
+	total, err = c.customCount("tokens", query)
 	return total, err
 }
 
-func (c *Client) GetOperations(filter filters.Operations) (txs []Operation, err error) {
-	query := obj{
-		"sort": obj{
-			"timestamp": obj{"order": "desc"},
-		},
+func (c *Client) GetOperations(filter filters.Operations) (operations []Operation, err error) {
+	q := esquery.Search().Sort("timestamp", "desc")
+	query := esquery.Bool()
+	if filter.TxHash != "" {
+		query.Must(esquery.Match("originalTxHash", filter.TxHash))
 	}
-	if len(filter.Token) != 0 {
-		addQuery(query, filter.Token, "query", "match_phrase", "tokens")
+	if filter.Token != "" {
+		query.Must(esquery.MatchPhrase("tokens", filter.Token))
 	}
+	if len(filter.Type) != 0 {
+		for _, t := range filter.Type {
+			query.Should(esquery.MatchPhrase("operation", t))
+		}
+		query.MinimumShouldMatch(1)
+	}
+	q.Query(query)
 	if filter.Limit != 0 {
-		query["size"] = filter.Limit
+		q = q.Size(filter.Limit)
 	}
 	if filter.Offset() != 0 {
-		query["from"] = filter.Offset()
+		q = q.From(filter.Offset())
 	}
-	keys, err := c.search("operations", query, &txs)
-	if len(keys) != len(txs) {
-		return txs, fmt.Errorf("wrong number of keys")
-	}
-	for i, key := range keys {
-		txs[i].OriginalTxHash = key
-	}
-	return txs, err
+	_, err = c.search("operations", q, &operations)
+	return operations, err
 }
 
 func (c *Client) GetOperationsCount(filter filters.Operations) (total uint64, err error) {
-	query := obj{}
-	if len(filter.Token) != 0 {
-		addQuery(query, filter.Token, "query", "match_phrase", "tokens")
+	query := esquery.Bool()
+	if filter.TxHash != "" {
+		query.Must(esquery.Match("originalTxHash", filter.TxHash))
 	}
-	total, err = c.count("operations", query)
+	if filter.Token != "" {
+		query.Must(esquery.MatchPhrase("tokens", filter.Token))
+	}
+	if len(filter.Type) != 0 {
+		for _, t := range filter.Type {
+			query.Should(esquery.MatchPhrase("operation", t))
+		}
+		query.MinimumShouldMatch(1)
+	}
+	total, err = c.count("operations", esquery.Count(query))
 	return total, err
 }
 
 func (c *Client) GetAccountsCount(filter filters.Accounts) (total uint64, err error) {
-	total, err = c.count("accounts", obj{})
+	total, err = c.customCount("accounts", obj{})
 	return total, err
 }
 
@@ -324,7 +349,43 @@ func (c *Client) ValidatorsKeys(shard uint64, epoch uint64) (keys data.Validator
 	return keys, err
 }
 
-func (c *Client) search(index string, query map[string]interface{}, dst interface{}) (keys []string, err error) {
+func (c *Client) search(index string, query *esquery.SearchRequest, dst interface{}) (keys []string, err error) {
+	res, err := query.Run(c.cli, func(request *esapi.SearchRequest) {
+		request.Index = []string{index}
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.IsError() {
+		if res.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return keys, fmt.Errorf(res.String())
+	}
+	d, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return keys, fmt.Errorf("ioutil.ReadAll: %s", err.Error())
+	}
+	var searchResp SearchResponse
+	err = json.Unmarshal(d, &searchResp)
+	if err != nil {
+		return keys, fmt.Errorf("json.Unmarshal(respMap): %s", err.Error())
+	}
+	items := make([]string, len(searchResp.Hits.Hits))
+	for i, hit := range searchResp.Hits.Hits {
+		items[i] = string(hit.Source)
+		keys = append(keys, hit.Id)
+	}
+	preparedString := fmt.Sprintf("[%s]", strings.Join(items, ","))
+	err = json.Unmarshal([]byte(preparedString), dst)
+	if err != nil {
+		return keys, fmt.Errorf("json.Unmarshal(preparedString): %s", err.Error())
+	}
+	return keys, nil
+}
+
+func (c *Client) customSearch(index string, query map[string]interface{}, dst interface{}) (keys []string, err error) {
 	resp, err := c.cli.Search(
 		c.cli.Search.WithIndex(index),
 		c.cli.Search.WithBody(esutil.NewJSONReader(&query)),
@@ -361,7 +422,7 @@ func (c *Client) search(index string, query map[string]interface{}, dst interfac
 	return keys, nil
 }
 
-func (c *Client) count(index string, query map[string]interface{}) (total uint64, err error) {
+func (c *Client) customCount(index string, query map[string]interface{}) (total uint64, err error) {
 	resp, err := c.cli.Count(
 		c.cli.Count.WithIndex(index),
 		c.cli.Count.WithBody(esutil.NewJSONReader(&query)),
@@ -377,6 +438,32 @@ func (c *Client) count(index string, query map[string]interface{}) (total uint64
 		return total, fmt.Errorf(resp.String())
 	}
 	d, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return total, fmt.Errorf("ioutil.ReadAll: %s", err.Error())
+	}
+	var countResp CountResponse
+	err = json.Unmarshal(d, &countResp)
+	if err != nil {
+		return total, fmt.Errorf("json.Unmarshal(CountResponse): %s", err.Error())
+	}
+	return countResp.Count, nil
+}
+
+func (c *Client) count(index string, query *esquery.CountRequest) (total uint64, err error) {
+	res, err := query.Run(c.cli, func(request *esapi.CountRequest) {
+		request.Index = []string{index}
+	})
+	if err != nil {
+		return total, err
+	}
+	defer res.Body.Close()
+	if res.IsError() {
+		if res.StatusCode == http.StatusNotFound {
+			return 0, nil
+		}
+		return total, fmt.Errorf(res.String())
+	}
+	d, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return total, fmt.Errorf("ioutil.ReadAll: %s", err.Error())
 	}
