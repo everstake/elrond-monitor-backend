@@ -317,7 +317,12 @@ func (c *Client) GetOperations(filter filters.Operations) (operations []Operatio
 	if filter.Offset() != 0 {
 		q = q.From(filter.Offset())
 	}
-	_, err = c.search("operations", q, &operations)
+	keys, err := c.search("operations", q, &operations)
+	for i, op := range operations {
+		if op.OriginalTxHash == "" {
+			operations[i].OriginalTxHash = keys[i]
+		}
+	}
 	return operations, err
 }
 
